@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11828.311 oobstable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Smartphone-AppStardewSocial", "Smartphone-AppStardewSocial.csproj", "{55D32960-F6B3-CE7C-7A8F-080B7693FC2A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{55D32960-F6B3-CE7C-7A8F-080B7693FC2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55D32960-F6B3-CE7C-7A8F-080B7693FC2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55D32960-F6B3-CE7C-7A8F-080B7693FC2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55D32960-F6B3-CE7C-7A8F-080B7693FC2A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {14A850EF-60A6-4FEF-ABE8-8889925855F8}
+	EndGlobalSection
+EndGlobal
