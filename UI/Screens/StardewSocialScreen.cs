@@ -34,6 +34,7 @@ namespace SmartphoneAppStardewSocial
         private bool socialCreateMenuOpen = false;
         private bool socialProfileMenuOpen = false;
         private bool socialNotificationMenuOpen = false;
+        private bool socialProfileDetailBackStack = false;
         private string selectedSocialPostId = "";
 
         // Profile details
@@ -63,6 +64,10 @@ namespace SmartphoneAppStardewSocial
         private readonly Dictionary<string, Rectangle> socialDetailPhotoPrevBounds = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Rectangle> socialDetailPhotoNextBounds = new(StringComparer.OrdinalIgnoreCase);
         private string hoverText = "";
+        private string customTagTooltipText = "";
+        private List<string> customLikeTooltipNames = null;
+        private int tooltipMouseX = 0;
+        private int tooltipMouseY = 0;
 
         public static string FormatTime(string season, int day, int timeOfDay)
         {
@@ -366,7 +371,7 @@ namespace SmartphoneAppStardewSocial
             }
 
             // Notifications Max Scroll
-            int notifY = ScaleUiValue(10) + StardewConnectManager.GetActiveSocialNotificationCount() * ScaleUiValue(85);
+            int notifY = ScaleUiValue(10) + StardewConnectManager.GetActiveSocialNotificationCount() * ScaleUiValue(80);
             this.maxScrollNotification = Math.Max(0, notifY - clipRect.Height);
 
             // Profile Max Scroll
@@ -396,7 +401,7 @@ namespace SmartphoneAppStardewSocial
 
         private int MeasurePostHeight(StardewConnectPost post, bool isDetail)
         {
-            string key = post.Id + (isDetail ? "_detail" : "_feed");
+            string key = post.Id + (isDetail ? "_detail" : "_feed") + "_" + post.Comments.Count + "_" + post.LikedBy.Count;
             if (this.socialCardHeightCache.TryGetValue(key, out int cachedHeight))
                 return cachedHeight;
 
@@ -449,6 +454,9 @@ namespace SmartphoneAppStardewSocial
 
         public override void draw(SpriteBatch b)
         {
+            this.customTagTooltipText = "";
+            this.customLikeTooltipNames = null;
+
             // Dim background
             b.Draw(Game1.staminaRect, new Rectangle(0, 0, Game1.uiViewport.Width, Game1.uiViewport.Height), Color.Black * 0.6f);
 
@@ -581,6 +589,16 @@ namespace SmartphoneAppStardewSocial
                 this.hoverText = "";
             }
 
+            if (!string.IsNullOrEmpty(this.customTagTooltipText))
+            {
+                DrawCustomTagTooltip(b, this.customTagTooltipText, this.tooltipMouseX, this.tooltipMouseY);
+            }
+
+            if (this.customLikeTooltipNames != null && this.customLikeTooltipNames.Count > 0)
+            {
+                DrawCustomLikeTooltip(b, this.customLikeTooltipNames, this.tooltipMouseX, this.tooltipMouseY);
+            }
+
             drawMouse(b);
         }
 
@@ -623,8 +641,15 @@ namespace SmartphoneAppStardewSocial
 
             if (!isDetail)
             {
-                // Register feed bounds
-                this.socialFeedPostBounds[post.Id] = cardBounds;
+                if (this.socialProfileMenuOpen)
+                {
+                    this.socialProfilePostBounds[post.Id] = cardBounds;
+                }
+                else
+                {
+                    // Register feed bounds
+                    this.socialFeedPostBounds[post.Id] = cardBounds;
+                }
             }
 
             // Card body background
@@ -709,7 +734,10 @@ namespace SmartphoneAppStardewSocial
 
                 if (tagBounds.Contains(Game1.getMouseX(), Game1.getMouseY()))
                 {
-                    this.hoverText = string.Join("\n", post.PostTags.Select(t => t.StartsWith("#") ? t : "#" + t));
+                    string tagStr = string.Join(" ", post.PostTags.Select(t => t.StartsWith("#") ? t : "#" + t));
+                    this.customTagTooltipText = tagStr;
+                    this.tooltipMouseX = Game1.getMouseX();
+                    this.tooltipMouseY = Game1.getMouseY();
                 }
 
                 DrawPhoneText(b, Game1.smallFont, displayedTagsText, new Vector2(x + ScaleUiValue(15), cursorY), Color.Gray * 0.8f, SocialHeaderMetaScale);
@@ -780,8 +808,15 @@ namespace SmartphoneAppStardewSocial
             }
             else
             {
-                this.socialFeedLikeBounds[post.Id] = cardLikeBounds;
-                this.socialFeedCommentBounds[post.Id] = cardCommentBounds;
+                if (this.socialProfileMenuOpen)
+                {
+                    this.socialProfileLikeBounds[post.Id] = cardLikeBounds;
+                }
+                else
+                {
+                    this.socialFeedLikeBounds[post.Id] = cardLikeBounds;
+                    this.socialFeedCommentBounds[post.Id] = cardCommentBounds;
+                }
             }
 
             // Liking UI area
@@ -791,6 +826,31 @@ namespace SmartphoneAppStardewSocial
             b.Draw(Game1.mouseCursors, likeIconBounds, heartSource, Color.White);
 
             string likeCountText = post.LikedBy.Count.ToString();
+            Vector2 likeCountSize = MeasurePhoneText(Game1.smallFont, likeCountText);
+            Rectangle likeCountNumberBounds = new Rectangle(likeIconBounds.Right + ScaleUiValue(8), cursorY, (int)likeCountSize.X, (int)likeCountSize.Y);
+
+            if (likeCountNumberBounds.Contains(Game1.getMouseX(), Game1.getMouseY()) && post.LikedBy.Count > 0)
+            {
+                List<string> lastLiked = new List<string>();
+                List<string> likers;
+                lock (post.LikedBy)
+                {
+                    likers = new List<string>(post.LikedBy);
+                }
+                int count = likers.Count;
+                for (int i = count - 1; i >= Math.Max(0, count - 5); i--)
+                {
+                    lastLiked.Add(likers[i]);
+                }
+                if (count > 5)
+                {
+                    lastLiked.Add("...");
+                }
+                this.customLikeTooltipNames = lastLiked;
+                this.tooltipMouseX = Game1.getMouseX();
+                this.tooltipMouseY = Game1.getMouseY();
+            }
+
             DrawPhoneText(b, Game1.smallFont, likeCountText, new Vector2(likeIconBounds.Right + ScaleUiValue(8), cursorY), Color.Black);
 
             // Commenting UI icon area
@@ -903,25 +963,27 @@ namespace SmartphoneAppStardewSocial
             int cardX = clipRect.X + ScaleUiValue(15);
             int cursorY = clipRect.Y + ScaleUiValue(10) - (int)this.socialNotificationScrollOffset;
 
-            int activeNotifications = StardewConnectManager.GetActiveSocialNotificationCount();
-            if (activeNotifications == 0)
+            var activeNotifications = StardewConnectManager.GetActiveSocialNotifications();
+            if (activeNotifications.Count == 0)
             {
                 DrawPhoneText(b, Game1.smallFont, "No new notifications.", new Vector2(cardX, cursorY + ScaleUiValue(15)), Color.Black);
             }
             else
             {
-                // Render a mock notification card
-                string messageText = "Abigail commented on your post.";
-                int cardHeight = ScaleUiValue(70);
-                Rectangle cardBounds = new Rectangle(cardX, cursorY, clipRect.Width - ScaleUiValue(30), cardHeight);
-                this.socialNotificationItemBounds["notif1"] = cardBounds;
+                foreach (var notif in activeNotifications)
+                {
+                    int cardHeight = ScaleUiValue(70);
+                    Rectangle cardBounds = new Rectangle(cardX, cursorY, clipRect.Width - ScaleUiValue(30), cardHeight);
+                    this.socialNotificationItemBounds[notif.Id] = cardBounds;
 
-                IClickableMenu.drawTextureBox(
-                    b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
-                    cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
-                    new Color(255, 255, 255, 230), 1f, false);
+                    IClickableMenu.drawTextureBox(
+                        b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                        cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
+                        new Color(255, 255, 255, 230), 1f, false);
 
-                DrawPhoneText(b, Game1.smallFont, messageText, new Vector2(cardBounds.X + ScaleUiValue(14), cardBounds.Y + ScaleUiValue(22)), Color.Black);
+                    DrawPhoneText(b, Game1.smallFont, notif.Text, new Vector2(cardBounds.X + ScaleUiValue(14), cardBounds.Y + ScaleUiValue(22)), Color.Black);
+                    cursorY += cardHeight + ScaleUiValue(10);
+                }
             }
 
             // Clear all button at bottom of scrolled view
@@ -1305,6 +1367,11 @@ namespace SmartphoneAppStardewSocial
             {
                 this.selectedSocialPostId = "";
                 this.commentTextBox.Clear();
+                if (this.socialProfileDetailBackStack)
+                {
+                    this.socialProfileMenuOpen = true;
+                    this.socialProfileDetailBackStack = false;
+                }
                 Game1.playSound("bigDeSelect");
             }
             else if (this.socialProfileMenuOpen)
@@ -1369,6 +1436,21 @@ namespace SmartphoneAppStardewSocial
             if (this.emojiMenu != null)
             {
                 this.emojiMenu.releaseLeftClick(x, y);
+                return;
+            }
+
+            bool wasDragging = this.isDragging;
+            this.isDragging = false;
+            this.isScrolling = false;
+
+            if (this.hasTouchScrolled)
+            {
+                this.hasTouchScrolled = false;
+                return;
+            }
+
+            if (wasDragging)
+            {
                 return;
             }
 
@@ -1445,23 +1527,34 @@ namespace SmartphoneAppStardewSocial
                 return;
             }
 
-            bool wasDragging = this.isDragging;
-            this.isDragging = false;
-            this.isScrolling = false;
-
-            if (this.hasTouchScrolled)
-            {
-                this.hasTouchScrolled = false;
-                return;
-            }
-
-            if (wasDragging)
-            {
-                return;
-            }
-
             Rectangle contentRect = GetContentBounds();
             Rectangle clipRect = SocialContentViewportRect;
+
+            // Click Profile icon to redirect
+            if (clipRect.Contains(x, y))
+            {
+                var activeProfileList = this.socialFeedProfileIconBounds;
+                if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId)) activeProfileList = this.socialDetailProfileIconBounds;
+                else if (this.socialProfileMenuOpen) activeProfileList = this.socialProfileIconBounds;
+
+                foreach (var target in activeProfileList)
+                {
+                    if (target.Bounds.Contains(x, y))
+                    {
+                        this.selectedSocialProfileActorName = target.ActorName;
+                        this.selectedSocialProfileActorIsPlayer = target.ActorIsPlayer;
+                        this.selectedSocialPostId = "";
+                        this.socialProfileMenuOpen = true;
+                        this.socialProfileDetailBackStack = false;
+                        this.socialFeedOpenCreatePostBounds = Rectangle.Empty;
+                        this.socialProfileScrollOffset = 0f;
+                        this.socialProfileScrollTarget = 0f;
+                        CalculateLayout();
+                        Game1.playSound("smallSelect");
+                        return;
+                    }
+                }
+            }
 
             if (this.socialCreateMenuOpen)
             {
@@ -1569,7 +1662,8 @@ namespace SmartphoneAppStardewSocial
             {
                 if (this.socialNotificationClearAllBounds.Contains(x, y))
                 {
-                    StardewConnectManager.DismissSocialNotifications(new string[] { "notif1" });
+                    var notifs = StardewConnectManager.GetActiveSocialNotifications();
+                    StardewConnectManager.DismissSocialNotifications(notifs.Select(n => n.Id).ToArray());
                     CalculateLayout();
                     Game1.playSound("bigDeSelect");
                     return;
@@ -1581,37 +1675,15 @@ namespace SmartphoneAppStardewSocial
                     {
                         if (pair.Value.Contains(x, y))
                         {
-                            var posts = StardewConnectManager.GetPostsSnapshot();
-                            if (posts.Count > 0)
+                            var notifs = StardewConnectManager.GetActiveSocialNotifications();
+                            var clickedNotif = notifs.FirstOrDefault(n => string.Equals(n.Id, pair.Key, StringComparison.OrdinalIgnoreCase));
+                            if (clickedNotif != null)
                             {
-                                this.selectedSocialPostId = posts[0].Id;
+                                this.selectedSocialPostId = clickedNotif.PostId;
+                                StardewConnectManager.DismissSocialNotification(clickedNotif.Id);
                             }
                             this.socialNotificationMenuOpen = false;
-                            this.socialDetailScrollOffset = 0f;
-                            this.socialDetailScrollTarget = 0f;
-                            CalculateLayout();
-                            Game1.playSound("bigSelect");
-                            return;
-                        }
-                    }
-                }
-            }
-            else if (this.socialProfileMenuOpen)
-            {
-                if (this.socialProfileAvatarCameraButtonBounds.Contains(x, y))
-                {
-                    Game1.playSound("smallSelect");
-                    return;
-                }
-
-                if (clipRect.Contains(x, y))
-                {
-                    foreach (var pair in this.socialProfilePostBounds)
-                    {
-                        if (pair.Value.Contains(x, y))
-                        {
-                            this.selectedSocialPostId = pair.Key;
-                            this.socialProfileMenuOpen = false;
+                            this.socialProfileDetailBackStack = false;
                             this.socialDetailScrollOffset = 0f;
                             this.socialDetailScrollTarget = 0f;
                             CalculateLayout();
@@ -1625,16 +1697,7 @@ namespace SmartphoneAppStardewSocial
             {
                 if (this.socialDetailCommentSendBounds.Contains(x, y))
                 {
-                    if (!string.IsNullOrWhiteSpace(this.commentTextBox.Text))
-                    {
-                        StardewConnectManager.AddPlayerComment(this.selectedSocialPostId, this.commentTextBox.Text);
-                        this.commentTextBox.Clear();
-                        this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_detail");
-                        this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_feed");
-                        CalculateLayout();
-                        this.socialDetailScrollTarget = 0f;
-                        Game1.playSound("money");
-                    }
+                    SendComment();
                     return;
                 }
 
@@ -1645,6 +1708,42 @@ namespace SmartphoneAppStardewSocial
                     this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_feed");
                     Game1.playSound(liked ? "money" : "bigDeSelect");
                     return;
+                }
+            }
+            else if (this.socialProfileMenuOpen)
+            {
+                if (this.socialProfileAvatarCameraButtonBounds.Contains(x, y))
+                {
+                    Game1.playSound("smallSelect");
+                    return;
+                }
+
+                if (clipRect.Contains(x, y))
+                {
+                    foreach (var pair in this.socialProfileLikeBounds)
+                    {
+                        if (pair.Value.Contains(x, y))
+                        {
+                            bool liked = StardewConnectManager.TogglePostLikeByPlayer(pair.Key);
+                            Game1.playSound(liked ? "money" : "bigDeSelect");
+                            return;
+                        }
+                    }
+
+                    foreach (var pair in this.socialProfilePostBounds)
+                    {
+                        if (pair.Value.Contains(x, y))
+                        {
+                            this.selectedSocialPostId = pair.Key;
+                            this.socialProfileMenuOpen = false;
+                            this.socialProfileDetailBackStack = true;
+                            this.socialDetailScrollOffset = 0f;
+                            this.socialDetailScrollTarget = 0f;
+                            CalculateLayout();
+                            Game1.playSound("bigSelect");
+                            return;
+                        }
+                    }
                 }
             }
             else
@@ -1686,6 +1785,7 @@ namespace SmartphoneAppStardewSocial
                         if (pair.Value.Contains(x, y))
                         {
                             this.selectedSocialPostId = pair.Key;
+                            this.socialProfileDetailBackStack = false;
                             this.socialDetailScrollOffset = 0f;
                             this.socialDetailScrollTarget = 0f;
                             CalculateLayout();
@@ -1711,6 +1811,7 @@ namespace SmartphoneAppStardewSocial
                         if (pair.Value.Contains(x, y))
                         {
                             this.selectedSocialPostId = pair.Key;
+                            this.socialProfileDetailBackStack = false;
                             this.socialDetailScrollOffset = 0f;
                             this.socialDetailScrollTarget = 0f;
                             CalculateLayout();
@@ -1721,30 +1822,6 @@ namespace SmartphoneAppStardewSocial
                 }
             }
 
-            // Click Profile icon to redirect
-            if (clipRect.Contains(x, y))
-            {
-                var activeProfileList = this.socialFeedProfileIconBounds;
-                if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId)) activeProfileList = this.socialDetailProfileIconBounds;
-                else if (this.socialProfileMenuOpen) activeProfileList = this.socialProfileIconBounds;
-
-                foreach (var target in activeProfileList)
-                {
-                    if (target.Bounds.Contains(x, y))
-                    {
-                        this.selectedSocialProfileActorName = target.ActorName;
-                        this.selectedSocialProfileActorIsPlayer = target.ActorIsPlayer;
-                        this.selectedSocialPostId = "";
-                        this.socialProfileMenuOpen = true;
-                        this.socialFeedOpenCreatePostBounds = Rectangle.Empty;
-                        this.socialProfileScrollOffset = 0f;
-                        this.socialProfileScrollTarget = 0f;
-                        CalculateLayout();
-                        Game1.playSound("smallSelect");
-                        return;
-                    }
-                }
-            }
         }
 
         public override void leftClickHeld(int x, int y)
@@ -1817,6 +1894,7 @@ namespace SmartphoneAppStardewSocial
 
         public override void update(GameTime time)
         {
+            CalculateLayout();
             base.update(time);
 
             // Update scrolling animation
@@ -1973,6 +2051,20 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
+        private void SendComment()
+        {
+            if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId) && !string.IsNullOrWhiteSpace(this.commentTextBox.Text))
+            {
+                StardewConnectManager.AddPlayerComment(this.selectedSocialPostId, this.commentTextBox.Text);
+                this.commentTextBox.Clear();
+                this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_detail");
+                this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_feed");
+                CalculateLayout();
+                this.socialDetailScrollTarget = 0f;
+                Game1.playSound("money");
+            }
+        }
+
         public void RecieveSpecialInput(Keys key)
         {
             if (!Selected) return;
@@ -1985,7 +2077,12 @@ namespace SmartphoneAppStardewSocial
                     this.postTextBox.HandleKeyPress(key);
             }
             else if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
-                this.commentTextBox.HandleKeyPress(key);
+            {
+                if (key == Keys.Enter)
+                    SendComment();
+                else
+                    this.commentTextBox.HandleKeyPress(key);
+            }
         }
 
         public override void receiveKeyPress(Keys key)
@@ -1993,6 +2090,12 @@ namespace SmartphoneAppStardewSocial
             if (key == Keys.Escape)
             {
                 NavigateBack();
+                return;
+            }
+
+            if (key == Keys.Enter && this.Selected && !string.IsNullOrWhiteSpace(this.selectedSocialPostId))
+            {
+                SendComment();
                 return;
             }
 
@@ -2128,6 +2231,97 @@ namespace SmartphoneAppStardewSocial
                     return npc?.displayName ?? name;
                 })
                 .ToList();
+        }
+
+        private void DrawCustomTagTooltip(SpriteBatch b, string tagText, int mouseX, int mouseY)
+        {
+            if (string.IsNullOrWhiteSpace(tagText))
+                return;
+
+            int wrapWidth = GetPhoneScaledWrapWidth(ScaleUiValue(240), SocialHeaderMetaScale);
+            string parsedText = Game1.parseText(tagText, Game1.smallFont, wrapWidth);
+
+            string[] lines = parsedText.Split('\n');
+            int lineHeight = GetPhoneScaledLineHeight(Game1.smallFont, SocialHeaderMetaScale, extraPadding: 2);
+            int paddingX = ScaleUiValue(12);
+            int paddingY = ScaleUiValue(10);
+
+            int maxTextWidth = 0;
+            foreach (string line in lines)
+            {
+                maxTextWidth = Math.Max(maxTextWidth, (int)Math.Ceiling(MeasurePhoneText(Game1.smallFont, line, SocialHeaderMetaScale).X));
+            }
+
+            int boxWidth = maxTextWidth + paddingX * 2;
+            int boxHeight = paddingY * 2 + (lines.Length * lineHeight);
+
+            int x = mouseX + ScaleUiValue(15);
+            int y = mouseY + ScaleUiValue(15);
+            int maxX = Game1.uiViewport.Width - boxWidth - ScaleUiValue(15);
+            int maxY = Game1.uiViewport.Height - boxHeight - ScaleUiValue(15);
+            x = Math.Clamp(x, ScaleUiValue(15), maxX);
+            y = Math.Clamp(y, ScaleUiValue(15), maxY);
+
+            IClickableMenu.drawTextureBox(
+                b,
+                Game1.menuTexture,
+                new Rectangle(0, 256, 60, 60),
+                x,
+                y,
+                boxWidth,
+                boxHeight,
+                Color.White,
+                1f,
+                false);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                DrawPhoneText(b, Game1.smallFont, lines[i], new Vector2(x + paddingX, y + paddingY + (i * lineHeight)), Color.Black, SocialHeaderMetaScale);
+            }
+        }
+
+        private void DrawCustomLikeTooltip(SpriteBatch b, List<string> likerNames, int mouseX, int mouseY)
+        {
+            if (likerNames == null || likerNames.Count == 0)
+                return;
+
+            float textScale = 0.8f;
+            int lineHeight = GetPhoneScaledLineHeight(Game1.smallFont, textScale, extraPadding: 2);
+            int paddingX = ScaleUiValue(12);
+            int paddingY = ScaleUiValue(10);
+
+            int maxTextWidth = 0;
+            foreach (string name in likerNames)
+            {
+                maxTextWidth = Math.Max(maxTextWidth, (int)Math.Ceiling(MeasurePhoneText(Game1.smallFont, name, textScale).X));
+            }
+
+            int boxWidth = Math.Max(ScaleUiValue(100), maxTextWidth + paddingX * 2);
+            int boxHeight = paddingY * 2 + (likerNames.Count * lineHeight);
+
+            int x = mouseX + ScaleUiValue(15);
+            int y = mouseY + ScaleUiValue(15);
+            int maxX = Game1.uiViewport.Width - boxWidth - ScaleUiValue(15);
+            int maxY = Game1.uiViewport.Height - boxHeight - ScaleUiValue(15);
+            x = Math.Clamp(x, ScaleUiValue(15), maxX);
+            y = Math.Clamp(y, ScaleUiValue(15), maxY);
+
+            IClickableMenu.drawTextureBox(
+                b,
+                Game1.menuTexture,
+                new Rectangle(0, 256, 60, 60),
+                x,
+                y,
+                boxWidth,
+                boxHeight,
+                Color.White,
+                1f,
+                false);
+
+            for (int i = 0; i < likerNames.Count; i++)
+            {
+                DrawPhoneText(b, Game1.smallFont, likerNames[i], new Vector2(x + paddingX, y + paddingY + (i * lineHeight)), Game1.textColor, textScale);
+            }
         }
     }
 }

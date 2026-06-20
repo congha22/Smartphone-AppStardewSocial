@@ -220,7 +220,7 @@ namespace SmartphoneAppStardewSocial
             DrawPhoneText(b, Game1.smallFont, titleText, new Vector2(popupRect.X + (popupRect.Width - titleSize.X) / 2f, popupRect.Y + ScaleUiValue(15)), Color.Black, 1.1f);
 
             // Search Filter Box
-            Rectangle searchBounds = new Rectangle(popupRect.X + ScaleUiValue(15), popupRect.Y + ScaleUiValue(50), popupRect.Width - ScaleUiValue(30), ScaleUiValue(45));
+            Rectangle searchBounds = new Rectangle(popupRect.X + ScaleUiValue(15), popupRect.Y + ScaleUiValue(50), popupRect.Width - ScaleUiValue(30), ScaleUiValue(56));
             IClickableMenu.drawTextureBox(
                 b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
                 searchBounds.X, searchBounds.Y, searchBounds.Width, searchBounds.Height,
@@ -234,8 +234,8 @@ namespace SmartphoneAppStardewSocial
                 b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
                 doneBounds.X, doneBounds.Y, doneBounds.Width, doneBounds.Height,
                 Color.White, 1f, false);
-            Vector2 doneSize = MeasurePhoneText(Game1.smallFont, "Done");
-            DrawPhoneText(b, Game1.smallFont, "Done", new Vector2(doneBounds.X + (doneBounds.Width - doneSize.X) / 2f, doneBounds.Y + ScaleUiValue(12)), Color.Black);
+            Vector2 doneSize = MeasurePhoneText(Game1.smallFont, "Done", 0.8f);
+            DrawPhoneText(b, Game1.smallFont, "Done", new Vector2(doneBounds.X + (doneBounds.Width - doneSize.X) / 2f, doneBounds.Y + (doneBounds.Height - doneSize.Y) / 2f), Color.Black, 0.8f);
 
             // Scrollable list area
             int listY = searchBounds.Bottom + ScaleUiValue(15);

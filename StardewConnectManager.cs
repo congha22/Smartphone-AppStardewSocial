@@ -107,6 +107,14 @@ namespace SmartphoneAppStardewSocial
         public int Count { get; set; }
     }
 
+    public sealed class StardewSocialNotification
+    {
+        public string Id { get; set; } = "";
+        public string PostId { get; set; } = "";
+        public string Text { get; set; } = "";
+        public long Timestamp { get; set; }
+    }
+
     public static class StardewConnectManager
     {
         private static readonly List<StardewConnectPost> Posts = new();
@@ -130,6 +138,9 @@ namespace SmartphoneAppStardewSocial
             }
             return new string(stringChars);
         }
+
+        /// <summary>Alias used by the social simulation helpers.</summary>
+        public static string CreateShortAlphanumericId() => GeneratePostId();
 
         private static string NormalizeSaveFolderName(string saveFolderName)
         {
@@ -210,6 +221,10 @@ namespace SmartphoneAppStardewSocial
                 string statsFilePath = Path.Combine(directory, "profile_stat.json");
                 string statsJson = JsonConvert.SerializeObject(ProfileStats, Formatting.Indented);
                 File.WriteAllText(statsFilePath, statsJson);
+
+                string dismissedFilePath = Path.Combine(directory, "dismissed_notifications.json");
+                string dismissedJson = JsonConvert.SerializeObject(DismissedNotifications, Formatting.Indented);
+                File.WriteAllText(dismissedFilePath, dismissedJson);
             }
             catch (Exception ex)
             {
@@ -257,6 +272,24 @@ namespace SmartphoneAppStardewSocial
                 else
                 {
                     RebuildProfileStatsFromPosts();
+                }
+
+                string dismissedFilePath = Path.Combine(directory, "dismissed_notifications.json");
+                if (File.Exists(dismissedFilePath))
+                {
+                    string json = File.ReadAllText(dismissedFilePath);
+                    var loadedDismissed = JsonConvert.DeserializeObject<HashSet<string>>(json);
+                    if (loadedDismissed != null)
+                    {
+                        lock (DismissedNotifications)
+                        {
+                            DismissedNotifications.Clear();
+                            foreach (var id in loadedDismissed)
+                            {
+                                DismissedNotifications.Add(id);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -325,15 +358,25 @@ namespace SmartphoneAppStardewSocial
         public static void DismissSocialNotification(string key)
         {
             if (!string.IsNullOrWhiteSpace(key))
-                DismissedNotifications.Add(key);
+            {
+                lock (DismissedNotifications)
+                {
+                    DismissedNotifications.Add(key);
+                }
+                Save();
+            }
         }
 
         public static void DismissSocialNotifications(string[] notificationIds)
         {
-            foreach (var id in notificationIds)
+            lock (DismissedNotifications)
             {
-                DismissedNotifications.Add(id);
+                foreach (var id in notificationIds)
+                {
+                    DismissedNotifications.Add(id);
+                }
             }
+            Save();
         }
 
         public static void PruneSocialNotificationDismissals(IEnumerable<string> activeKeys)
@@ -579,9 +622,102 @@ namespace SmartphoneAppStardewSocial
             return deleted;
         }
 
+        public static List<StardewSocialNotification> GetActiveSocialNotifications()
+        {
+            var notifications = new List<StardewSocialNotification>();
+            string playerName = Game1.player?.Name ?? "Player";
+            string tagPattern = "@" + playerName;
+
+            var posts = GetPostsSnapshot();
+            foreach (var post in posts)
+            {
+                if (post.AuthorIsPlayer)
+                {
+                    // 1. Comment notifications
+                    var npcComments = post.Comments
+                        .Where(c => !c.AuthorIsPlayer)
+                        .OrderBy(c => c.CreatedTime.Timestamp)
+                        .ToList();
+
+                    if (npcComments.Count > 0)
+                    {
+                        string commentNotifId = "comment_" + post.Id;
+                        bool isDismissed;
+                        lock (DismissedNotifications)
+                        {
+                            isDismissed = DismissedNotifications.Contains(commentNotifId);
+                        }
+
+                        if (!isDismissed)
+                        {
+                            var uniqueNpcs = new List<string>();
+                            foreach (var c in npcComments)
+                            {
+                                string cleanName = Game1.getCharacterFromName(c.AuthorName)?.displayName ?? c.AuthorName;
+                                if (!uniqueNpcs.Contains(cleanName))
+                                {
+                                    uniqueNpcs.Add(cleanName);
+                                }
+                            }
+
+                            string text = "";
+                            if (uniqueNpcs.Count == 1)
+                            {
+                                text = $"{uniqueNpcs[0]} has commented on your post.";
+                            }
+                            else if (uniqueNpcs.Count == 2)
+                            {
+                                text = $"{uniqueNpcs[0]} and {uniqueNpcs[1]} has commented on your post.";
+                            }
+                            else
+                            {
+                                text = $"{uniqueNpcs[0]}, {uniqueNpcs[1]} and others has commented on your post.";
+                            }
+
+                            notifications.Add(new StardewSocialNotification
+                            {
+                                Id = commentNotifId,
+                                PostId = post.Id,
+                                Text = text,
+                                Timestamp = npcComments.Last().CreatedTime.Timestamp
+                            });
+                        }
+                    }
+
+                    // 2. Tag notifications
+                    foreach (var comment in npcComments)
+                    {
+                        if ((comment.Text ?? "").Contains(tagPattern, StringComparison.OrdinalIgnoreCase))
+                        {
+                            string tagNotifId = "tag_" + comment.Id;
+                            bool isDismissed;
+                            lock (DismissedNotifications)
+                            {
+                                isDismissed = DismissedNotifications.Contains(tagNotifId);
+                            }
+
+                            if (!isDismissed)
+                            {
+                                string cleanAuthorName = Game1.getCharacterFromName(comment.AuthorName)?.displayName ?? comment.AuthorName;
+                                notifications.Add(new StardewSocialNotification
+                                {
+                                    Id = tagNotifId,
+                                    PostId = post.Id,
+                                    Text = $"{cleanAuthorName} has tagged you in a comment.",
+                                    Timestamp = comment.CreatedTime.Timestamp
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return notifications.OrderByDescending(n => n.Timestamp).ToList();
+        }
+
         public static int GetActiveSocialNotificationCount()
         {
-            return 0;
+            return GetActiveSocialNotifications().Count;
         }
 
         private static string BuildActorKey(string actorName, bool actorIsPlayer)
@@ -747,6 +883,255 @@ namespace SmartphoneAppStardewSocial
                 .ThenBy(item => item.ActorName, StringComparer.OrdinalIgnoreCase)
                 .Take(count)
                 .ToList();
+        }
+
+        // ===== NPC social simulation helpers =====
+
+        /// <summary>Adds a new post by an NPC. Returns the post ID, or null if failed.</summary>
+        public static string? AddNpcPostWithAttachments(string npcName, string postText, IEnumerable<string>? attachedImageFiles)
+        {
+            if (string.IsNullOrWhiteSpace(npcName))
+                return null;
+
+            if (Game1.getCharacterFromName(npcName, mustBeVillager: false) == null)
+                return null;
+
+            string text = (postText ?? string.Empty).Trim();
+            var photos = new List<StardewConnectPhoto>();
+
+            foreach (string file in attachedImageFiles ?? Enumerable.Empty<string>())
+            {
+                string trimmedFile = (file ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(trimmedFile))
+                    continue;
+
+                // Extract tag from the NPC photo metadata stored by the framework's CaptureNpcPhoto
+                string tag = ModEntry.GetNpcPhotoTag(trimmedFile);
+                string fileName = System.IO.Path.GetFileName(trimmedFile);
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = System.IO.Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                System.IO.Directory.CreateDirectory(photoSharedDir);
+                string destPath = System.IO.Path.Combine(photoSharedDir, fileName);
+
+                try
+                {
+                    if (System.IO.File.Exists(trimmedFile))
+                    {
+                        if (System.IO.File.Exists(destPath))
+                            System.IO.File.Delete(destPath);
+                        System.IO.File.Move(trimmedFile, destPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModEntry.SMonitor.Log($"Failed to move NPC photo from temp to shared: {ex.Message}", StardewModdingAPI.LogLevel.Error);
+                }
+
+                photos.Add(new StardewConnectPhoto { Path = fileName, Tag = tag });
+            }
+
+            if (string.IsNullOrWhiteSpace(text) && photos.Count == 0)
+                return null;
+
+            string id = CreateShortAlphanumericId();
+            var uniqueTags = photos
+                .SelectMany(p => (p.Tag ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var post = new StardewConnectPost
+            {
+                Id = id,
+                AuthorName = npcName,
+                AuthorIsPlayer = false,
+                Text = text,
+                Photo = photos,
+                PostTags = uniqueTags,
+                CreatedTime = new StardewConnectTime
+                {
+                    Season = Game1.currentSeason ?? "spring",
+                    Day = Game1.dayOfMonth,
+                    Year = Game1.year,
+                    TimeOfDay = Game1.timeOfDay,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                },
+                LikedBy = new List<string>(),
+                Comments = new List<StardewConnectComment>()
+            };
+
+            lock (Posts)
+            {
+                Posts.Add(post);
+            }
+
+            var authorStats = GetOrCreateProfileStats(npcName, false);
+            authorStats.TotalPosts++;
+
+            Save();
+            return id;
+        }
+
+        /// <summary>Adds a comment by an NPC on a post. Returns true on success.</summary>
+        public static bool AddNpcComment(string postId, string npcName, string commentText)
+        {
+            if (string.IsNullOrWhiteSpace(postId) || string.IsNullOrWhiteSpace(npcName))
+                return false;
+
+            if (Game1.getCharacterFromName(npcName, mustBeVillager: true) == null)
+                return false;
+
+            StardewConnectPost? post = GetPost(postId);
+            if (post == null)
+                return false;
+
+            string text = (commentText ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            // Prevent NPC author from re-commenting unless other NPCs/players already commented
+            if (!post.AuthorIsPlayer && string.Equals(post.AuthorName, npcName, StringComparison.OrdinalIgnoreCase))
+            {
+                bool hasOtherComments = post.Comments != null
+                    && post.Comments.Any(c => c != null && !string.Equals(c.AuthorName, npcName, StringComparison.OrdinalIgnoreCase));
+
+                if (!hasOtherComments)
+                    return false;
+            }
+
+            var comment = new StardewConnectComment
+            {
+                Id = CreateShortAlphanumericId(),
+                AuthorName = npcName,
+                AuthorIsPlayer = false,
+                Text = text,
+                CreatedTime = new StardewConnectTime
+                {
+                    Season = Game1.currentSeason ?? "spring",
+                    Day = Game1.dayOfMonth,
+                    Year = Game1.year,
+                    TimeOfDay = Game1.timeOfDay,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                }
+            };
+
+            lock (post.Comments)
+            {
+                post.Comments.Add(comment);
+            }
+
+            ApplyCommentStats(post, npcName, false);
+            Save();
+            return true;
+        }
+
+        /// <summary>Sets or clears an NPC like on a post.</summary>
+        public static bool SetPostLike(string postId, string npcName, bool liked)
+        {
+            if (string.IsNullOrWhiteSpace(postId) || string.IsNullOrWhiteSpace(npcName))
+                return false;
+
+            StardewConnectPost? post = GetPost(postId);
+            if (post == null)
+                return false;
+
+            bool changed = false;
+            lock (post.LikedBy)
+            {
+                bool alreadyLiked = post.LikedBy.Contains(npcName, StringComparer.OrdinalIgnoreCase);
+
+                if (liked && !alreadyLiked)
+                {
+                    post.LikedBy.Add(npcName);
+                    changed = true;
+                }
+                else if (!liked && alreadyLiked)
+                {
+                    post.LikedBy.RemoveAll(n => string.Equals(n, npcName, StringComparison.OrdinalIgnoreCase));
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                ApplyLikeStats(post, npcName, false, liked);
+                Save();
+            }
+
+            return changed;
+        }
+
+        private const int DaysPerSeason = 28;
+        private const int SeasonsPerYear = 4;
+
+        private static int GetSeasonIndex(string season)
+        {
+            return (season ?? string.Empty).ToLowerInvariant() switch
+            {
+                "spring" => 0,
+                "summer" => 1,
+                "fall" => 2,
+                "winter" => 3,
+                _ => -1
+            };
+        }
+
+        private static int GetAbsoluteDayIndex(string season, int day, int year)
+        {
+            int seasonIndex = GetSeasonIndex(season);
+            if (seasonIndex < 0) seasonIndex = 0;
+            int safeDay = Math.Clamp(day, 1, DaysPerSeason);
+            int safeYear = Math.Max(1, year);
+            return ((safeYear - 1) * SeasonsPerYear * DaysPerSeason)
+                + (seasonIndex * DaysPerSeason)
+                + (safeDay - 1);
+        }
+
+        private static List<StardewConnectPost> GetPostsWithinPastDays(int startDay, int endDays)
+        {
+            lock (Posts)
+            {
+                if (Posts.Count == 0 || startDay < 0 || endDays < 0 || endDays < startDay)
+                    return new List<StardewConnectPost>();
+
+                int currentDayIndex = GetAbsoluteDayIndex(Game1.currentSeason, Game1.dayOfMonth, Game1.year);
+                int startDayIndex = currentDayIndex - startDay;
+                int endDayIndex = currentDayIndex - endDays;
+
+                return Posts.Where(post =>
+                {
+                    int postDayIndex = GetAbsoluteDayIndex(post.Season, post.Day, post.Year);
+                    return postDayIndex >= endDayIndex && postDayIndex <= startDayIndex;
+                }).ToList();
+            }
+        }
+
+        public static List<string> GetRandomPostIdWithinDayRange(int count = 1, int startDay = 0, int endDay = 1)
+        {
+            List<StardewConnectPost> recentPosts = GetPostsWithinPastDays(startDay, endDay);
+            if (recentPosts.Count == 0)
+                return new List<string>();
+
+            var result = new List<string>();
+            for (int i = 0; i < count; i++)
+                result.Add(recentPosts[Game1.random.Next(recentPosts.Count)].Id);
+
+            return result;
+        }
+
+        public static string GetOnePopularPostIdWithinDayRange(int startDay = 1, int endDay = 2)
+        {
+            List<StardewConnectPost> recentPosts = GetPostsWithinPastDays(startDay, endDay);
+            if (recentPosts.Count == 0)
+                return string.Empty;
+
+            var topPosts = recentPosts
+                .OrderByDescending(post => post.LikedBy.Count)
+                .Take(3)
+                .ToList();
+
+            return topPosts[Game1.random.Next(topPosts.Count)].Id;
         }
     }
 }
