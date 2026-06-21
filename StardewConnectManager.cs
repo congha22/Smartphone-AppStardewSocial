@@ -42,6 +42,12 @@ namespace SmartphoneAppStardewSocial
         public long TotalGameTime { get => CreatedTime.Timestamp; set => CreatedTime.Timestamp = value; }
     }
 
+    public sealed class StardewConnectPlayerReadCommentCount
+    {
+        public string PlayerName { get; set; } = "";
+        public int Count { get; set; }
+    }
+
     public sealed class StardewConnectPostAttachment
     {
         public string ImageFile { get; set; } = "";
@@ -61,6 +67,7 @@ namespace SmartphoneAppStardewSocial
         public List<string> LikedBy { get; set; } = new();
         public List<StardewConnectComment> Comments { get; set; } = new();
         public List<string> PostTags { get; set; } = new();
+        public List<StardewConnectPlayerReadCommentCount> PlayerReadCommentCounts { get; set; } = new();
 
         [JsonIgnore]
         public string Season { get => CreatedTime.Season; set => CreatedTime.Season = value; }
@@ -202,6 +209,70 @@ namespace SmartphoneAppStardewSocial
         {
             string saveFolder = GetActiveSaveFolderName();
             return Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, SaveFileName);
+        }
+
+        private static void TrimPosts()
+        {
+            lock (Posts)
+            {
+                int maxPosts = ModEntry.Config?.MaxStardewConnectPosts ?? 100;
+                if (maxPosts <= 0) maxPosts = 100;
+
+                if (Posts.Count > maxPosts)
+                {
+                    var sorted = Posts.OrderBy(p => p.CreatedTime.Timestamp).ToList();
+                    int removeCount = sorted.Count - maxPosts;
+                    for (int i = 0; i < removeCount; i++)
+                    {
+                        Posts.Remove(sorted[i]);
+                    }
+                    RebuildProfileStatsFromPosts();
+                }
+            }
+        }
+
+        public static void EnforcePhotoSharedRetention()
+        {
+            try
+            {
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                if (!Directory.Exists(photoSharedDir))
+                    return;
+
+                int maxPhotos = ModEntry.Config?.MaxPhoto ?? 200;
+                if (maxPhotos <= 0) maxPhotos = 200;
+
+                var files = new List<FileInfo>();
+                foreach (string filePath in Directory.GetFiles(photoSharedDir))
+                {
+                    if (Path.GetFileName(filePath).Contains("_avatar", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    files.Add(new FileInfo(filePath));
+                }
+
+                if (files.Count <= maxPhotos)
+                    return;
+
+                files.Sort((a, b) => a.LastWriteTime.CompareTo(b.LastWriteTime));
+
+                int deleteCount = files.Count - maxPhotos;
+                for (int i = 0; i < deleteCount; i++)
+                {
+                    try
+                    {
+                        files[i].Delete();
+                    }
+                    catch (Exception ex)
+                    {
+                        ModEntry.SMonitor.Log($"Failed to delete old photo file {files[i].FullName}: {ex.Message}", StardewModdingAPI.LogLevel.Warn);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModEntry.SMonitor.Log($"Error enforcing photo shared retention: {ex.Message}", StardewModdingAPI.LogLevel.Error);
+            }
         }
 
         public static void Save()
@@ -385,11 +456,73 @@ namespace SmartphoneAppStardewSocial
 
         public static int GetPlayerReadCommentCount(StardewConnectPost post, string playerName)
         {
-            return post?.Comments?.Count ?? 0;
+            if (post == null)
+                return 0;
+
+            post.Comments ??= new List<StardewConnectComment>();
+            post.PlayerReadCommentCounts ??= new List<StardewConnectPlayerReadCommentCount>();
+
+            string normalizedPlayerName = (playerName ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
+                normalizedPlayerName = Game1.player?.Name ?? "Player";
+
+            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
+                return 0;
+
+            StardewConnectPlayerReadCommentCount? found = post.PlayerReadCommentCounts
+                .FirstOrDefault(entry => entry != null
+                    && string.Equals(entry.PlayerName ?? "", normalizedPlayerName, StringComparison.OrdinalIgnoreCase));
+
+            if (found == null)
+                return 0;
+
+            return Math.Clamp(found.Count, 0, post.Comments.Count);
+        }
+
+        public static void SetPlayerReadCommentCount(StardewConnectPost post, string playerName, int count)
+        {
+            if (post == null)
+                return;
+
+            post.Comments ??= new List<StardewConnectComment>();
+            post.PlayerReadCommentCounts ??= new List<StardewConnectPlayerReadCommentCount>();
+
+            string normalizedPlayerName = (playerName ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
+                normalizedPlayerName = Game1.player?.Name ?? "Player";
+
+            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
+                return;
+
+            int normalizedCount = Math.Clamp(count, 0, post.Comments.Count);
+
+            StardewConnectPlayerReadCommentCount? existing = post.PlayerReadCommentCounts
+                .FirstOrDefault(entry => entry != null
+                    && string.Equals(entry.PlayerName ?? "", normalizedPlayerName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing == null)
+            {
+                post.PlayerReadCommentCounts.Add(new StardewConnectPlayerReadCommentCount
+                {
+                    PlayerName = normalizedPlayerName,
+                    Count = normalizedCount
+                });
+            }
+            else
+            {
+                existing.PlayerName = normalizedPlayerName;
+                existing.Count = normalizedCount;
+            }
         }
 
         public static void MarkPostCommentsRead(string postId)
         {
+            var post = GetPost(postId);
+            if (post != null)
+            {
+                SetPlayerReadCommentCount(post, Game1.player?.Name ?? "Player", post.Comments.Count);
+                Save();
+            }
         }
 
         public static bool TogglePostLikeByPlayer(string postId)
@@ -569,6 +702,7 @@ namespace SmartphoneAppStardewSocial
             {
                 Posts.Add(newPost);
             }
+            TrimPosts();
 
             var authorStats = GetOrCreateProfileStats(newPost.AuthorName, true);
             authorStats.TotalPosts++;
@@ -920,6 +1054,7 @@ namespace SmartphoneAppStardewSocial
                         if (System.IO.File.Exists(destPath))
                             System.IO.File.Delete(destPath);
                         System.IO.File.Move(trimmedFile, destPath);
+                        EnforcePhotoSharedRetention();
                     }
                 }
                 catch (Exception ex)
@@ -965,6 +1100,7 @@ namespace SmartphoneAppStardewSocial
             {
                 Posts.Add(post);
             }
+            TrimPosts();
 
             var authorStats = GetOrCreateProfileStats(npcName, false);
             authorStats.TotalPosts++;
@@ -1133,5 +1269,6 @@ namespace SmartphoneAppStardewSocial
 
             return topPosts[Game1.random.Next(topPosts.Count)].Id;
         }
+
     }
 }

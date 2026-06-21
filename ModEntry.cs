@@ -51,6 +51,7 @@ namespace SmartphoneAppStardewSocial
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
             StardewConnectManager.Load();
+            StardewConnectManager.EnforcePhotoSharedRetention();
             ResetDailyAiUsageLimit();
             RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
@@ -82,9 +83,32 @@ namespace SmartphoneAppStardewSocial
             RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
+            CleanPhotoTempFolder();
 
             if (ShouldRunSocialSimulation())
                 PrepareDailyRandomNpcSocialPosts();
+        }
+
+        private void CleanPhotoTempFolder()
+        {
+            try
+            {
+                string saveFolder = StardewConnectManager.GetActiveSaveFolderName();
+                if (string.IsNullOrWhiteSpace(saveFolder)) return;
+
+                string photoTempDir = Path.Combine(SHelper.DirectoryPath, "userdata", saveFolder, "photo_temp");
+                if (Directory.Exists(photoTempDir))
+                {
+                    foreach (string file in Directory.GetFiles(photoTempDir))
+                    {
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"Failed to clean photo_temp folder: {ex.Message}", LogLevel.Error);
+            }
         }
 
         private void OnTimeChanged(object? sender, TimeChangedEventArgs e)

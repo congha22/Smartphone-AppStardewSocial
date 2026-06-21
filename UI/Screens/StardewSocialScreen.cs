@@ -416,14 +416,16 @@ namespace SmartphoneAppStardewSocial
                 height += (lines.Count * postLineHeight) + ScaleUiValue(6);
             }
 
-            if (post.PostTags != null && post.PostTags.Count > 0)
+            if (ModEntry.Config.ShowSocialImageTags && post.PostTags != null && post.PostTags.Count > 0)
             {
                 height += GetPhoneScaledLineHeight(Game1.smallFont, SocialHeaderMetaScale) + ScaleUiValue(6);
             }
 
             if (post.Photo != null && post.Photo.Count > 0)
             {
-                height += ScaleUiValue(400) + ScaleUiValue(10);
+                int maxPhotoW = cardWidth - ScaleUiValue(30);
+                int photoH = GetAdaptivePhotoHeight(post, maxPhotoW);
+                height += photoH + ScaleUiValue(10);
             }
 
             height += ScaleUiValue(34); // like/comment action block
@@ -447,7 +449,7 @@ namespace SmartphoneAppStardewSocial
                 height += (lines.Count * commentLineHeight) + ScaleUiValue(6);
             }
 
-            int measuredHeight = height + ScaleUiValue(6);
+            int measuredHeight = height + ScaleUiValue(15);
             this.socialCardHeightCache[key] = measuredHeight;
             return measuredHeight;
         }
@@ -658,6 +660,16 @@ namespace SmartphoneAppStardewSocial
                 cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
                 Color.White, 1f, false);
 
+            if (!isDetail)
+            {
+                int readCount = StardewConnectManager.GetPlayerReadCommentCount(post, Game1.player?.Name ?? "Player");
+                int unreadCommentsCount = post.Comments.Count - readCount;
+                if (ModEntry.Config.ShowUnreadComment && unreadCommentsCount > 0)
+                {
+                    DrawSocialUnreadBadge(b, cardBounds.Right - ScaleUiValue(10), cardBounds.Y + ScaleUiValue(10), unreadCommentsCount);
+                }
+            }
+
             int cursorY = y + ScaleUiValue(15);
 
             // Actor icon - increased size to 56
@@ -720,7 +732,7 @@ namespace SmartphoneAppStardewSocial
             }
 
             // Post Tags (size and color same with post create time text, max 30 chars, tooltip on hover)
-            if (post.PostTags != null && post.PostTags.Count > 0)
+            if (ModEntry.Config.ShowSocialImageTags && post.PostTags != null && post.PostTags.Count > 0)
             {
                 string tagsText = string.Join(" ", post.PostTags.Select(t => t.StartsWith("#") ? t : "#" + t));
                 string displayedTagsText = tagsText;
@@ -744,7 +756,7 @@ namespace SmartphoneAppStardewSocial
                 cursorY += GetPhoneScaledLineHeight(Game1.smallFont, SocialHeaderMetaScale) + ScaleUiValue(6);
             }
 
-            // Photos navigation carousel (doubled allowed height to 400, static controls)
+            // Photos navigation carousel (doubled allowed height to adaptive, static controls)
             if (post.Photo != null && post.Photo.Count > 0)
             {
                 if (!postPhotoIndices.TryGetValue(post.Id, out int photoIdx))
@@ -755,18 +767,18 @@ namespace SmartphoneAppStardewSocial
                 
                 var photo = post.Photo[photoIdx];
                 var tex = GetPostPhotoTexture(post, photo);
+                int maxPhotoW = cardWidth - ScaleUiValue(30);
+                int photoH = GetAdaptivePhotoHeight(post, maxPhotoW);
+
                 if (tex != null && !tex.IsDisposed)
                 {
-                    int maxPhotoW = cardWidth - ScaleUiValue(30);
-                    int maxPhotoH = ScaleUiValue(400);
-                    
-                    float scale = Math.Min((float)maxPhotoW / tex.Width, (float)maxPhotoH / tex.Height);
+                    float scale = Math.Min((float)maxPhotoW / tex.Width, (float)ScaleUiValue(360) / tex.Height);
                     int drawW = (int)(tex.Width * scale);
                     int drawH = (int)(tex.Height * scale);
                     
                     Rectangle photoRect = new Rectangle(
                         x + ScaleUiValue(15) + (maxPhotoW - drawW) / 2,
-                        cursorY + (maxPhotoH - drawH) / 2,
+                        cursorY + (photoH - drawH) / 2,
                         drawW,
                         drawH
                     );
@@ -776,8 +788,8 @@ namespace SmartphoneAppStardewSocial
                     {
                         int photoAreaX = x + ScaleUiValue(15);
                         int photoAreaWidth = cardWidth - ScaleUiValue(30);
-                        Rectangle prevBtn = new Rectangle(photoAreaX + ScaleUiValue(8), cursorY + ScaleUiValue(400) / 2 - ScaleUiValue(15), ScaleUiValue(30), ScaleUiValue(30));
-                        Rectangle nextBtn = new Rectangle(photoAreaX + photoAreaWidth - ScaleUiValue(38), cursorY + ScaleUiValue(400) / 2 - ScaleUiValue(15), ScaleUiValue(30), ScaleUiValue(30));
+                        Rectangle prevBtn = new Rectangle(photoAreaX + ScaleUiValue(8), cursorY + photoH / 2 - ScaleUiValue(15), ScaleUiValue(30), ScaleUiValue(30));
+                        Rectangle nextBtn = new Rectangle(photoAreaX + photoAreaWidth - ScaleUiValue(38), cursorY + photoH / 2 - ScaleUiValue(15), ScaleUiValue(30), ScaleUiValue(30));
 
                         if (isDetail)
                         {
@@ -796,7 +808,7 @@ namespace SmartphoneAppStardewSocial
                         b.Draw(Game1.mouseCursors, nextBtn, Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, 33), Color.White);
                     }
                 }
-                cursorY += ScaleUiValue(400) + ScaleUiValue(10);
+                cursorY += photoH + ScaleUiValue(10);
             }
 
             // Register hitboxes precisely where they are drawn!
@@ -923,6 +935,36 @@ namespace SmartphoneAppStardewSocial
                 {
                     b.Draw(npc.Portrait, bounds, new Rectangle(0, 0, 64, 64), Color.White);
                     return;
+                }
+            }
+            else
+            {
+                long? playerId = null;
+                if (string.Equals(actorName, Game1.player?.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    playerId = Game1.player.UniqueMultiplayerID;
+                }
+                else
+                {
+                    var farmer = Game1.getAllFarmers().FirstOrDefault(f => string.Equals(f.Name, actorName, StringComparison.OrdinalIgnoreCase));
+                    if (farmer != null)
+                    {
+                        playerId = farmer.UniqueMultiplayerID;
+                    }
+                }
+
+                if (playerId.HasValue)
+                {
+                    string id = playerId.Value.ToString();
+                    string saveFolder = StardewConnectManager.GetActiveSaveFolderName();
+                    string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                    string avatarPath = Path.Combine(photoSharedDir, $"{id}_avatar.jpg");
+
+                    if (File.Exists(avatarPath) && TryGetAvatarTexture(avatarPath, out Texture2D avatarTexture))
+                    {
+                        b.Draw(avatarTexture, bounds, Color.White);
+                        return;
+                    }
                 }
             }
 
@@ -1365,6 +1407,12 @@ namespace SmartphoneAppStardewSocial
             }
             else if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
             {
+                var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                if (post != null)
+                {
+                    StardewConnectManager.SetPlayerReadCommentCount(post, Game1.player?.Name ?? "Player", post.Comments.Count);
+                    StardewConnectManager.Save();
+                }
                 this.selectedSocialPostId = "";
                 this.commentTextBox.Clear();
                 if (this.socialProfileDetailBackStack)
@@ -1715,6 +1763,58 @@ namespace SmartphoneAppStardewSocial
                 if (this.socialProfileAvatarCameraButtonBounds.Contains(x, y))
                 {
                     Game1.playSound("smallSelect");
+                    Game1.activeClickableMenu = null;
+
+                    var api = this.smartphoneApi;
+                    var backAction = this.onBack;
+
+                    api.RetrievePhotos(limit: 1, getTexture: true, getMetadata: false, onComplete: (jsonResult) =>
+                    {
+                        var screen = new StardewSocialScreen(api, backAction)
+                        {
+                            socialProfileMenuOpen = true,
+                            selectedSocialProfileActorName = Game1.player?.Name ?? "Player",
+                            selectedSocialProfileActorIsPlayer = true
+                        };
+                        Game1.activeClickableMenu = screen;
+
+                        List<SelectedPhotoResult>? results = null;
+                        try
+                        {
+                            results = string.IsNullOrWhiteSpace(jsonResult)
+                                ? null
+                                : Newtonsoft.Json.JsonConvert.DeserializeObject<List<SelectedPhotoResult>>(jsonResult);
+                        }
+                        catch (Exception ex)
+                        {
+                            ModEntry.SMonitor.Log($"Failed to deserialize avatar photo result: {ex.Message}", LogLevel.Error);
+                        }
+
+                        if (results != null && results.Count > 0 && results[0].TextureData != null)
+                        {
+                            try
+                            {
+                                string saveFolder = StardewConnectManager.GetActiveSaveFolderName();
+                                string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                                Directory.CreateDirectory(photoSharedDir);
+
+                                string id = Game1.player.UniqueMultiplayerID.ToString();
+                                foreach (var oldFile in Directory.GetFiles(photoSharedDir, $"{id}_avatar.*"))
+                                {
+                                    try { File.Delete(oldFile); } catch { }
+                                }
+
+                                string destPath = Path.Combine(photoSharedDir, $"{id}_avatar.jpg");
+                                File.WriteAllBytes(destPath, results[0].TextureData);
+
+                                ClearAvatarCache();
+                            }
+                            catch (Exception ex)
+                            {
+                                ModEntry.SMonitor.Log($"Failed to save avatar photo: {ex.Message}", LogLevel.Error);
+                            }
+                        }
+                    }, squareOnly: true);
                     return;
                 }
 
@@ -1972,6 +2072,15 @@ namespace SmartphoneAppStardewSocial
         protected override void cleanupBeforeExit()
         {
             StardewConnectManager.SaveLastVisitTime();
+            if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
+            {
+                var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                if (post != null)
+                {
+                    StardewConnectManager.SetPlayerReadCommentCount(post, Game1.player?.Name ?? "Player", post.Comments.Count);
+                    StardewConnectManager.Save();
+                }
+            }
             if (Game1.keyboardDispatcher.Subscriber == this)
             {
                 Game1.keyboardDispatcher.Subscriber = null;
@@ -2255,7 +2364,7 @@ namespace SmartphoneAppStardewSocial
             int boxWidth = maxTextWidth + paddingX * 2;
             int boxHeight = paddingY * 2 + (lines.Length * lineHeight);
 
-            int x = mouseX + ScaleUiValue(15);
+            int x = mouseX + ScaleUiValue(28);
             int y = mouseY + ScaleUiValue(15);
             int maxX = Game1.uiViewport.Width - boxWidth - ScaleUiValue(15);
             int maxY = Game1.uiViewport.Height - boxHeight - ScaleUiValue(15);
@@ -2299,7 +2408,7 @@ namespace SmartphoneAppStardewSocial
             int boxWidth = Math.Max(ScaleUiValue(100), maxTextWidth + paddingX * 2);
             int boxHeight = paddingY * 2 + (likerNames.Count * lineHeight);
 
-            int x = mouseX + ScaleUiValue(15);
+            int x = mouseX + ScaleUiValue(28);
             int y = mouseY + ScaleUiValue(15);
             int maxX = Game1.uiViewport.Width - boxWidth - ScaleUiValue(15);
             int maxY = Game1.uiViewport.Height - boxHeight - ScaleUiValue(15);
@@ -2322,6 +2431,90 @@ namespace SmartphoneAppStardewSocial
             {
                 DrawPhoneText(b, Game1.smallFont, likerNames[i], new Vector2(x + paddingX, y + paddingY + (i * lineHeight)), Game1.textColor, textScale);
             }
+        }
+        private int GetAdaptivePhotoHeight(StardewConnectPost post, int maxPhotoW)
+        {
+            if (post.Photo == null || post.Photo.Count == 0)
+                return 0;
+
+            int maxPhotoH = ScaleUiValue(360);
+            int highestPhotoHeight = 0;
+
+            foreach (var photo in post.Photo)
+            {
+                var tex = GetPostPhotoTexture(post, photo);
+                if (tex != null && !tex.IsDisposed)
+                {
+                    float scale = Math.Min((float)maxPhotoW / tex.Width, (float)maxPhotoH / tex.Height);
+                    int drawH = (int)(tex.Height * scale);
+                    if (drawH > highestPhotoHeight)
+                    {
+                        highestPhotoHeight = drawH;
+                    }
+                }
+            }
+
+            if (highestPhotoHeight == 0)
+            {
+                return maxPhotoH;
+            }
+
+            return highestPhotoHeight;
+        }
+
+        private static readonly Dictionary<string, Texture2D> avatarImageCache = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly HashSet<string> avatarFailedImagePaths = new(StringComparer.OrdinalIgnoreCase);
+
+        public static void ClearAvatarCache()
+        {
+            foreach (var texture in avatarImageCache.Values)
+            {
+                if (texture != null && !texture.IsDisposed)
+                {
+                    try { texture.Dispose(); } catch { }
+                }
+            }
+            avatarImageCache.Clear();
+            avatarFailedImagePaths.Clear();
+        }
+
+        private bool TryGetAvatarTexture(string imagePath, out Texture2D texture)
+        {
+            texture = null!;
+            if (string.IsNullOrWhiteSpace(imagePath))
+                return false;
+
+            if (avatarImageCache.TryGetValue(imagePath, out Texture2D? cachedTexture) && cachedTexture != null)
+            {
+                if (!cachedTexture.IsDisposed)
+                {
+                    texture = cachedTexture;
+                    return true;
+                }
+                avatarImageCache.Remove(imagePath);
+            }
+
+            if (avatarFailedImagePaths.Contains(imagePath))
+                return false;
+
+            try
+            {
+                if (File.Exists(imagePath))
+                {
+                    using FileStream stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    Texture2D loadedTexture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
+                    avatarImageCache[imagePath] = loadedTexture;
+                    texture = loadedTexture;
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+
+            avatarFailedImagePaths.Add(imagePath);
+            return false;
         }
     }
 }

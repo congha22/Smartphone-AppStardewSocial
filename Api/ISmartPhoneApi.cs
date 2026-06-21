@@ -186,7 +186,7 @@ namespace SmartphoneAppStardewSocial
 
         bool UnregisterUnlimitedEvent(string ownerModId, string eventType);
         Texture2D? GetAppTexture(AppIconType appIconType);
-        void RetrievePhotos(int limit, bool getTexture, bool getMetadata, Action<string> onComplete);
+        void RetrievePhotos(int limit, bool getTexture, bool getMetadata, Action<string> onComplete, bool squareOnly = false);
     }
 
     public class SelectedPhotoResult
