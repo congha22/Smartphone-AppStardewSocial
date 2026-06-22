@@ -30,6 +30,13 @@ namespace SmartphoneAppStardewSocial
                 ModConfig.PostPerDayHigh
             };
 
+            string[] characteristicValues =
+            {
+                ModConfig.CharacteristicModeMinimal,
+                ModConfig.CharacteristicModeShort,
+                ModConfig.CharacteristicModeLong
+            };
+
             static string EnsureAllowedValue(string? value, string fallback, string[] allowedValues)
             {
                 if (string.IsNullOrWhiteSpace(value))
@@ -54,18 +61,9 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddTextOption(
                 mod: ModManifest,
                 name: () => "Language",
-                tooltip: () => "Choose prompt and response language.",
+                tooltip: () => "The language and alphabet you want the AI to generate in.",
                 getValue: () => string.IsNullOrWhiteSpace(Config.Language) ? "English" : Config.Language,
                 setValue: value => Config.Language = string.IsNullOrWhiteSpace(value) ? "English" : value.Trim()
-            );
-
-            configMenu.AddTextOption(
-                mod: ModManifest,
-                name: () => "Post Frequency",
-                tooltip: () => "Choose post frequency per day.",
-                getValue: () => EnsureAllowedValue(Config.PostPerDay, ModConfig.PostPerDayLow, postPerDayValues),
-                setValue: value => Config.PostPerDay = value,
-                allowedValues: postPerDayValues
             );
 
             configMenu.AddBoolOption(
@@ -104,12 +102,19 @@ namespace SmartphoneAppStardewSocial
                 text: () => "Miscellaneous",
                 tooltip: () => "Configure ignored NPCs."
             );
+            
+            configMenu.AddPageLink(
+                mod: ModManifest,
+                pageId: "advance-settings",
+                text: () => "Advance - Custom API",
+                tooltip: () => "Call to your own API endpoint. Check out Forum for instruction."
+            );
 
             // AI Settings page
             configMenu.AddPage(mod: ModManifest, pageId: "ai-settings", pageTitle: () => "AI Settings");
             configMenu.AddParagraph(
                 mod: ModManifest,
-                text: () => "Setup your AI provider credentials here."
+                text: () => "All option below required API key provided."
             );
 
             configMenu.AddTextOption(
@@ -129,6 +134,24 @@ namespace SmartphoneAppStardewSocial
                 allowedValues: aiModelValues
             );
 
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => "Post Frequency",
+                tooltip: () => "Choose post frequency per day.",
+                getValue: () => EnsureAllowedValue(Config.PostPerDay, ModConfig.PostPerDayLow, postPerDayValues),
+                setValue: value => Config.PostPerDay = value,
+                allowedValues: postPerDayValues
+            );
+
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => "NPC Characteristic Detail",
+                tooltip: () => "How much background information to send to the AI.",
+                getValue: () => EnsureAllowedValue(Config.CharacteristicMode, ModConfig.CharacteristicModeShort, characteristicValues),
+                setValue: value => Config.CharacteristicMode = value,
+                allowedValues: characteristicValues
+            );
+
             configMenu.AddBoolOption(
                 mod: ModManifest,
                 name: () => "Better Quality Comment",
@@ -137,8 +160,47 @@ namespace SmartphoneAppStardewSocial
                 setValue: value => Config.BetterQualityComment = value
             );
 
-            // Custom API settings inside AI page
-            configMenu.AddSectionTitle(mod: ModManifest, text: () => "Custom Endpoint Settings (Optional)");
+            // Limits & Storage page
+            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => "Limits & Storage");
+
+            configMenu.AddNumberOption(
+                mod: ModManifest,
+                name: () => "Max StardewConnect Posts",
+                tooltip: () => "Max number of posts to keep in StardewConnect.",
+                getValue: () => Config.MaxStardewConnectPosts,
+                setValue: value => Config.MaxStardewConnectPosts = Math.Clamp(value, 10, 1000),
+                min: 10,
+                max: 1000
+            );
+
+            configMenu.AddNumberOption(
+                mod: ModManifest,
+                name: () => "Max Photos",
+                tooltip: () => "Max number of photos to keep in photo_shared folder.",
+                getValue: () => Config.MaxPhoto,
+                setValue: value => Config.MaxPhoto = Math.Clamp(value, 10, 1000),
+                min: 10,
+                max: 1000
+            );
+
+            // Miscellaneous page
+            configMenu.AddPage(mod: ModManifest, pageId: "misc-settings", pageTitle: () => "Miscellaneous");
+
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => "Ignored NPCs",
+                tooltip: () => "Comma-separated list of NPCs who cannot post or comment.",
+                getValue: () => Config.IgnoredNpc ?? string.Empty,
+                setValue: value => Config.IgnoredNpc = value ?? string.Empty
+            );
+
+
+            configMenu.AddPage(mod: ModManifest, pageId: "advance-settings", pageTitle: () => "Advance - Custom API");
+            configMenu.AddParagraph(
+                mod: ModManifest,
+                text: () => "When using this advance setting, key and model selection on regular AI setting will be override."
+            );
+
             configMenu.AddTextOption(
                 mod: ModManifest,
                 name: () => "Custom API Endpoint",
@@ -195,40 +257,6 @@ namespace SmartphoneAppStardewSocial
                 setValue: value => Config.CustomApiTimeoutSeconds = Math.Clamp(value, 5, 300),
                 min: 5,
                 max: 300
-            );
-
-            // Limits & Storage page
-            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => "Limits & Storage");
-
-            configMenu.AddNumberOption(
-                mod: ModManifest,
-                name: () => "Max StardewConnect Posts",
-                tooltip: () => "Max number of posts to keep in StardewConnect.",
-                getValue: () => Config.MaxStardewConnectPosts,
-                setValue: value => Config.MaxStardewConnectPosts = Math.Clamp(value, 10, 1000),
-                min: 10,
-                max: 1000
-            );
-
-            configMenu.AddNumberOption(
-                mod: ModManifest,
-                name: () => "Max Photos",
-                tooltip: () => "Max number of photos to keep in photo_shared folder.",
-                getValue: () => Config.MaxPhoto,
-                setValue: value => Config.MaxPhoto = Math.Clamp(value, 10, 1000),
-                min: 10,
-                max: 1000
-            );
-
-            // Miscellaneous page
-            configMenu.AddPage(mod: ModManifest, pageId: "misc-settings", pageTitle: () => "Miscellaneous");
-
-            configMenu.AddTextOption(
-                mod: ModManifest,
-                name: () => "Ignored NPCs",
-                tooltip: () => "Comma-separated list of NPCs who cannot post or comment.",
-                getValue: () => Config.IgnoredNpc ?? string.Empty,
-                setValue: value => Config.IgnoredNpc = value ?? string.Empty
             );
         }
     }

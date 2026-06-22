@@ -73,14 +73,14 @@ namespace SmartphoneAppStardewSocial
         private static int SocialLikeMinPerPost = 1;
 
         // Social post weights. Keep total 100
-        private static int SocialPostWeightText0Images = 25;
-        private static int SocialPostWeightText1Image = 33;
-        private static int SocialPostWeightText2Images = 15;
-        private static int SocialPostWeightText3Images = 5;
+        private static int SocialPostWeightText0Images = 27;
+        private static int SocialPostWeightText1Image = 35;
+        private static int SocialPostWeightText2Images = 16;
+        private static int SocialPostWeightText3Images = 6;
         private static int SocialPostWeightNoText0Images = 0;
-        private static int SocialPostWeightNoText1Image = 10;
-        private static int SocialPostWeightNoText2Images = 7;
-        private static int SocialPostWeightNoText3Images = 5;
+        private static int SocialPostWeightNoText1Image = 8;
+        private static int SocialPostWeightNoText2Images = 5;
+        private static int SocialPostWeightNoText3Images = 3;
 
         internal static void UpdatePostInteractionLimit()
         {

@@ -19,6 +19,11 @@ namespace SmartphoneAppStardewSocial
         public const string GeminiModel_31FlashLite = "gemini-3.1-flash-lite";
         public const string GeminiModel_3FlashPreview = "gemini-3-flash-preview";
 
+        public const string CharacteristicModeMinimal = "minimal";
+        public const string CharacteristicModeShort = "short";
+        public const string CharacteristicModeLong = "long";
+
+
         public static readonly List<string> geminiModels = new()
         {
             GeminiModel_35Flash,
@@ -40,15 +45,8 @@ namespace SmartphoneAppStardewSocial
 
         public string Key { get; set; } = string.Empty;
         public string Model { get; set; } = OpenAIModel_54mini;
-        public string CustomApiEndpoint { get; set; } = string.Empty;
-        public string CustomApiKey { get; set; } = string.Empty;
+        public string CharacteristicMode { get; set; } = CharacteristicModeShort;
         public bool BetterQualityComment { get; set; } = false;
-
-        public string CustomApiKeyHeader { get; set; } = "Authorization";
-        public string CustomApiKeyPrefix { get; set; } = "Bearer";
-        public string CustomApiPayloadTemplate { get; set; } = "{\"model\":\"MODEL_HERE\",\"messages\":[{\"role\":\"system\",\"content\":\"SYSTEM_INPUT_HERE\"},{\"role\":\"user\",\"content\":\"USER_INPUT_HERE\"}]}";
-        public string CustomApiResponseTextPath { get; set; } = "choices[0].message.content";
-        public int CustomApiTimeoutSeconds { get; set; } = 45;
 
         public int MaxStardewConnectPosts { get; set; } = 100;
         public int MaxPhoto { get; set; } = 200;
@@ -56,5 +54,19 @@ namespace SmartphoneAppStardewSocial
         public bool ShowUnreadComment { get; set; } = true;
 
         public string IgnoredNpc { get; set; } = "Leo, Krobus, Dwarf, Gunther, Birdie, Bouncer, MoonSBV, PanSBV, RaccoonSBV, Leximonster, Dianna, Torts";
+
+
+
+
+
+
+        // advance
+        public string CustomApiEndpoint { get; set; } = string.Empty;
+        public string CustomApiKey { get; set; } = string.Empty;        
+        public string CustomApiKeyHeader { get; set; } = "Authorization";
+        public string CustomApiKeyPrefix { get; set; } = "Bearer";
+        public string CustomApiPayloadTemplate { get; set; } = "{\"model\":\"MODEL_HERE\",\"messages\":[{\"role\":\"system\",\"content\":\"SYSTEM_INPUT_HERE\"},{\"role\":\"user\",\"content\":\"USER_INPUT_HERE\"}]}";
+        public string CustomApiResponseTextPath { get; set; } = "choices[0].message.content";
+        public int CustomApiTimeoutSeconds { get; set; } = 45;
     }
 }

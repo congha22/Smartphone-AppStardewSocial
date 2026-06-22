@@ -383,8 +383,22 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
+        public static void Reset()
+        {
+            lock (Posts)
+            {
+                Posts.Clear();
+            }
+            lock (ProfileStats)
+            {
+                ProfileStats.Clear();
+            }
+            LocalData = new LocalSocialData();
+        }
+
         public static void Load()
         {
+            Reset();
             try
             {
                 string filePath = GetSaveFilePath();

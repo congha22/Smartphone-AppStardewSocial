@@ -155,8 +155,6 @@ namespace SmartphoneAppStardewSocial
                     this.socialCreatePhotoPrevBounds = Rectangle.Empty;
                     this.socialCreatePhotoNextBounds = Rectangle.Empty;
                 }
-
-                cursorY += previewRect.Height + ScaleUiValue(15);
             }
             else
             {

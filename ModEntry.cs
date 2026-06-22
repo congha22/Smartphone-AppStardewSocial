@@ -21,8 +21,10 @@ namespace SmartphoneAppStardewSocial
         internal static ISmartPhoneApi? iSmartphoneApi;
         private Texture2D? appIcon;
         private Texture2D? appBackgroundTexture;
+        public static bool modReady = false;
 
         // NPC characteristic data loaded from assets
+        public static Dictionary<string, string> NpcCharacteristicsLong = new();
         public static Dictionary<string, string> NpcCharacteristicsShort = new();
         public static Dictionary<string, string> NpcCharacteristicsMinimal = new();
 
@@ -54,9 +56,10 @@ namespace SmartphoneAppStardewSocial
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
+            if (!modReady)
+                return;
             StardewConnectManager.Load();
             StardewConnectManager.EnforcePhotoSharedRetention();
-            ResetDailyAiUsageLimit();
             RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
@@ -66,6 +69,27 @@ namespace SmartphoneAppStardewSocial
 
             OutdoorAreasByLocation = SHelper.Data.ReadJsonFile<Dictionary<string, Dictionary<string, AreaData>>>("assets/area_outdoor.json")
                         ?? new Dictionary<string, Dictionary<string, AreaData>>();
+
+            try
+            {
+                var long_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_long.json");
+                if (long_ != null) NpcCharacteristicsLong = long_;
+            }
+            catch { }
+
+            try
+            {
+                var short_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_short.json");
+                if (short_ != null) NpcCharacteristicsShort = short_;
+            }
+            catch { }
+
+            try
+            {
+                var minimal_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_minimal.json");
+                if (minimal_ != null) NpcCharacteristicsMinimal = minimal_;
+            }
+            catch { }
 
             areaTags = new Dictionary<string, Dictionary<string, AreaData>>(IndoorAreasByLocation);
             foreach (var kvp in OutdoorAreasByLocation)
@@ -81,14 +105,16 @@ namespace SmartphoneAppStardewSocial
 
         private void OnReturnedToTitle(object? sender, ReturnedToTitleEventArgs e)
         {
-            StardewConnectManager.Load();
+            if (!modReady)
+                return;
+            StardewConnectManager.Reset();
             ClearPendingRandomNpcSocialPost();
-            ClearQueuedAiActions();
         }
 
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
-            ResetDailyAiUsageLimit();
+            if (!modReady)
+                return;
             RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
@@ -122,7 +148,8 @@ namespace SmartphoneAppStardewSocial
 
         private void OnTimeChanged(object? sender, TimeChangedEventArgs e)
         {
-            HandleAiUsageTimeChanged(e.NewTime);
+            if (!modReady)
+                return;
             HandleAiModelSettingTimeChanged(e.NewTime);
 
             if (ShouldRunSocialSimulation())
@@ -169,20 +196,6 @@ namespace SmartphoneAppStardewSocial
             {
                 this.Monitor.Log($"Failed to load Stardew Social assets: {ex.Message}", LogLevel.Error);
             }
-
-            try
-            {
-                var short_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_short.json");
-                if (short_ != null) NpcCharacteristicsShort = short_;
-            }
-            catch { }
-
-            try
-            {
-                var minimal_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_minimal.json");
-                if (minimal_ != null) NpcCharacteristicsMinimal = minimal_;
-            }
-            catch { }
         }
 
         private void RegisterStardewSocialApp()
@@ -214,8 +227,11 @@ namespace SmartphoneAppStardewSocial
 
             if (!appRegistered)
             {
-                this.Monitor.Log("Failed to register Stardew Social app.", LogLevel.Warn);
+                this.Monitor.Log("Failed to register Stardew Social app.", LogLevel.Error);
+                return;
             }
+            
+            modReady = true;
         }
 
         private void OpenStardewSocialApp()

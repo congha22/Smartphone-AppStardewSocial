@@ -165,28 +165,8 @@ namespace SmartphoneAppStardewSocial
                 return false;
             }
 
-            if (!IsAllowedLocalHttpHost(parsedUri.Host))
-            {
-                errorMessage = "Custom API endpoint must use HTTPS for remote hosts. HTTP is only allowed for localhost or loopback addresses.";
-                return false;
-            }
-
             endpointUri = parsedUri;
             return true;
-        }
-
-        private static bool IsAllowedLocalHttpHost(string host)
-        {
-            if (string.IsNullOrWhiteSpace(host))
-                return false;
-
-            if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (IPAddress.TryParse(host, out IPAddress? parsedAddress))
-                return IPAddress.IsLoopback(parsedAddress);
-
-            return false;
         }
 
         private static bool IsValidHttpHeaderName(string headerName)
@@ -368,9 +348,6 @@ namespace SmartphoneAppStardewSocial
 
         internal static void HandleAiModelSettingTimeChanged(int newTime)
         {
-            if (IsAiTemporarilyDisabledForPhoneInactivity())
-                return;
-
             if (IsBringYourOwnAiProviderMode())
             {
                 chatModel = Config.Model;
@@ -477,27 +454,43 @@ namespace SmartphoneAppStardewSocial
             if (getMinimal && IsSharedAiProviderMode())
                 return npcCharacteristic;
 
-            // Try short then minimal characteristics from loaded data
-            if (NpcCharacteristicsShort.TryGetValue(npc.Name, out string? customCharacteristic)
-                && !string.IsNullOrWhiteSpace(customCharacteristic)
-                && !IsReducedQuality
-                && !getMinimal)
+            // CUSTOM CHARACTERISTIC OVERRIDE
+            if (IsBringYourOwnAiProviderMode())
             {
-                npcCharacteristic = customCharacteristic;
+                if (Config.CharacteristicMode == ModConfig.CharacteristicModeLong && NpcCharacteristicsLong.TryGetValue(npc.Name, out string? customCharacteristicLong) && !string.IsNullOrWhiteSpace(customCharacteristicLong) && !getMinimal)
+                {
+                    npcCharacteristic = customCharacteristicLong;
+                }
+                else if (Config.CharacteristicMode == ModConfig.CharacteristicModeShort && NpcCharacteristicsShort.TryGetValue(npc.Name, out string? customCharacteristic) && !string.IsNullOrWhiteSpace(customCharacteristic) && !getMinimal)
+                {
+                    npcCharacteristic = customCharacteristic;
+                }
+                else if (NpcCharacteristicsMinimal.TryGetValue(npc.Name, out string? customCharacteristicMinimal) && !string.IsNullOrWhiteSpace(customCharacteristicMinimal) && (Config.CharacteristicMode == ModConfig.CharacteristicModeMinimal || getMinimal && Config.BetterQualityComment))
+                {
+                    npcCharacteristic = customCharacteristicMinimal;
+                }
+                return npcCharacteristic.Trim();
             }
-            else if (NpcCharacteristicsMinimal.TryGetValue(npc.Name, out string? customCharacteristicMinimal)
-                && !string.IsNullOrWhiteSpace(customCharacteristicMinimal))
+            // DEFAULT CHARACTERISTIC
+            else
             {
-                npcCharacteristic = customCharacteristicMinimal;
-            }
+                if (NpcCharacteristicsShort.TryGetValue(npc.Name, out string? customCharacteristic) && !string.IsNullOrWhiteSpace(customCharacteristic) && !IsReducedQuality)
+                {
+                    npcCharacteristic = customCharacteristic;
+                }
+                else if (NpcCharacteristicsMinimal.TryGetValue(npc.Name, out string? customCharacteristicMinimal) && !string.IsNullOrWhiteSpace(customCharacteristicMinimal))
+                {
+                    npcCharacteristic = customCharacteristicMinimal;
+                }
 
-            return npcCharacteristic.Trim();
+                return npcCharacteristic.Trim();
+            }
         }
 
         private static async Task<Dictionary<string, string>> GenerateNpcSocialPostTextsBatch(IReadOnlyList<DailySocialPostPlan> scheduledPosts)
         {
             var generatedPosts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (scheduledPosts == null || scheduledPosts.Count == 0 || IsMaxedLimit || IsAiTemporarilyDisabledForPhoneInactivity())
+            if (scheduledPosts == null || scheduledPosts.Count == 0 || IsMaxedLimit)
                 return generatedPosts;
 
             List<DailySocialPostPlan> validPlans = scheduledPosts
@@ -521,17 +514,6 @@ namespace SmartphoneAppStardewSocial
                     return generatedPosts;
                 }
 
-                foreach (var asd in validPlans)
-                {
-                    foreach (var asdasd in asd.AttachmentTags)
-                    {
-                        foreach (var asdasdasd in asdasd)
-                        {
-                            SMonitor.Log("asdasdasd " + asdasdasd, LogLevel.Error);
-                        }
-                    }
-                }
-
                 var payloadPosts = validPlans.Select(plan => new
                 {
                     id = plan.PlanId,
@@ -546,11 +528,6 @@ namespace SmartphoneAppStardewSocial
                     worldContext = BuildWorldContextForSocialPost(plan.ScheduledTime),
                     scheduledTime = plan.ScheduledTime
                 }).ToList();
-
-                foreach (var asd in payloadPosts)
-                {
-                    SMonitor.Log("imageTags " + asd.imageTags, LogLevel.Error);
-                }
 
                 string developerMessage = @"
                     You are roleplaying as NPCs in Stardew Valley. Your task is to write posts on a social media channel for each NPC.
@@ -669,7 +646,6 @@ namespace SmartphoneAppStardewSocial
                     if (httpResponse.IsSuccessStatusCode)
                     {
                         string jsonResponse = await httpResponse.Content.ReadAsStringAsync();
-                        RegisterSuccessfulAiCall();
 
                         JToken parsedToken;
                         try
@@ -681,6 +657,16 @@ namespace SmartphoneAppStardewSocial
                             SMonitor.Log($"Unable to parse social posts response payload from {provider}: {jsonResponse}", LogLevel.Trace);
                             return generatedPosts;
                         }
+
+
+                    // SMonitor.Log(jsonResponse.ToString(), LogLevel.Error);
+                    // SMonitor.Log("system-----", LogLevel.Error);
+                    // SMonitor.Log(system, LogLevel.Error);
+                    // SMonitor.Log("user-----", LogLevel.Error);
+                    // SMonitor.Log(user, LogLevel.Error);
+                    SMonitor.Log("response-----", LogLevel.Error);
+                    SMonitor.Log(jsonResponse, LogLevel.Error);
+                    SMonitor.Log("\n\n", LogLevel.Error);
 
                         string responseText;
                         if (provider == AiProviderGemini)
@@ -789,7 +775,7 @@ namespace SmartphoneAppStardewSocial
         public static async Task<Dictionary<string, Dictionary<string, string>>> GenerateNpcSocialPostCommentsBatch(IReadOnlyDictionary<string, IReadOnlyList<string>> commenterNamesByPostId)
         {
             var generatedCommentsByPost = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-            if (commenterNamesByPostId == null || commenterNamesByPostId.Count == 0 || IsMaxedLimit || IsAiTemporarilyDisabledForPhoneInactivity())
+            if (commenterNamesByPostId == null || commenterNamesByPostId.Count == 0 || IsMaxedLimit)
                 return generatedCommentsByPost;
 
             var expectedCommentersByPost = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
@@ -1017,7 +1003,6 @@ namespace SmartphoneAppStardewSocial
                     if (httpResponse.IsSuccessStatusCode)
                     {
                         string jsonResponse = await httpResponse.Content.ReadAsStringAsync();
-                        RegisterSuccessfulAiCall();
 
                         JToken parsedToken;
                         try

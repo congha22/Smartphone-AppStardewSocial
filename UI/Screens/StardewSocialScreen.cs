@@ -630,12 +630,12 @@ namespace SmartphoneAppStardewSocial
             bool isViewingFeed = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && string.IsNullOrWhiteSpace(this.selectedSocialPostId);
             if (isViewingFeed)
             {
-                int topButtonsY = this.yPositionOnScreen + ScaleUiValue(62);
+                int topButtonsY = this.yPositionOnScreen + ScaleUiValue(65);
                 int createBtnX = this.xPositionOnScreen + ScaleUiValue(100);
 
-                this.socialFeedOpenCreatePostBounds = new Rectangle(createBtnX, topButtonsY, ScaleUiValue(150), ScaleUiValue(40));
-                this.socialFeedOpenProfileBounds = new Rectangle(this.socialFeedOpenCreatePostBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(40), ScaleUiValue(40));
-                this.socialFeedOpenNotificationBounds = new Rectangle(this.socialFeedOpenProfileBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(40), ScaleUiValue(40));
+                this.socialFeedOpenCreatePostBounds = new Rectangle(createBtnX, topButtonsY, ScaleUiValue(150), ScaleUiValue(45));
+                this.socialFeedOpenProfileBounds = new Rectangle(this.socialFeedOpenCreatePostBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
+                this.socialFeedOpenNotificationBounds = new Rectangle(this.socialFeedOpenProfileBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
 
                 // Draw Create Post button
                 IClickableMenu.drawTextureBox(
@@ -658,7 +658,7 @@ namespace SmartphoneAppStardewSocial
                 Texture2D? notifIcon = this.smartphoneApi.GetAppTexture(AppIconType.Notification);
                 if (notifIcon != null)
                 {
-                    b.Draw(notifIcon, new Rectangle(this.socialFeedOpenNotificationBounds.X + ScaleUiValue(5), this.socialFeedOpenNotificationBounds.Y + ScaleUiValue(5), ScaleUiValue(30), ScaleUiValue(30)), Color.White);
+                    b.Draw(notifIcon, new Rectangle(this.socialFeedOpenNotificationBounds.X + ScaleUiValue(5), this.socialFeedOpenNotificationBounds.Y + ScaleUiValue(5), ScaleUiValue(35), ScaleUiValue(35)), Color.White);
                 }
 
                 int notifCount = StardewConnectManager.GetActiveSocialNotificationCount();
