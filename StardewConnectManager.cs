@@ -67,6 +67,7 @@ namespace SmartphoneAppStardewSocial
         public List<string> LikedBy { get; set; } = new();
         public List<StardewConnectComment> Comments { get; set; } = new();
         public List<string> PostTags { get; set; } = new();
+        [JsonIgnore]
         public List<StardewConnectPlayerReadCommentCount> PlayerReadCommentCounts { get; set; } = new();
 
         [JsonIgnore]
@@ -120,12 +121,21 @@ namespace SmartphoneAppStardewSocial
         public string PostId { get; set; } = "";
         public string Text { get; set; } = "";
         public long Timestamp { get; set; }
+        public bool Read { get; set; }
+    }
+
+
+    public sealed class LocalSocialData
+    {
+        public Dictionary<string, int> ReadCommentCount { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public long LastVisit { get; set; }
+        public List<StardewSocialNotification> ActiveNotification { get; set; } = new();
     }
 
     public static class StardewConnectManager
     {
         private static readonly List<StardewConnectPost> Posts = new();
-        private static readonly HashSet<string> DismissedNotifications = new(StringComparer.OrdinalIgnoreCase);
+        private static LocalSocialData LocalData = new();
         private static readonly Dictionary<string, StardewConnectProfileStats> ProfileStats = new(StringComparer.OrdinalIgnoreCase);
         private static readonly string SaveFileName = "post_data.json";
         private static readonly Random random = new();
@@ -211,6 +221,80 @@ namespace SmartphoneAppStardewSocial
             return Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, SaveFileName);
         }
 
+        public static string GetLocalDataFilePath()
+        {
+            string saveFolder = GetActiveSaveFolderName();
+            return Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "local_data.json");
+        }
+
+        public static void SaveLocalData()
+        {
+            try
+            {
+                string filePath = GetLocalDataFilePath();
+                string directory = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                string json = JsonConvert.SerializeObject(LocalData, Formatting.Indented);
+                File.WriteAllText(filePath, json);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.SMonitor.Log($"Failed to save local data: {ex}", StardewModdingAPI.LogLevel.Error);
+            }
+        }
+
+        public static void LoadLocalData()
+        {
+            try
+            {
+                string filePath = GetLocalDataFilePath();
+                if (File.Exists(filePath))
+                {
+                    string json = File.ReadAllText(filePath);
+                    var loaded = JsonConvert.DeserializeObject<LocalSocialData>(json);
+                    if (loaded != null)
+                    {
+                        LocalData = loaded;
+                        LocalData.ReadCommentCount ??= new(StringComparer.OrdinalIgnoreCase);
+                        LocalData.ActiveNotification ??= new();
+
+                        // Cleanup notifications and read comment counts for posts that no longer exist
+                        lock (Posts)
+                        {
+                            var postIds = new HashSet<string>(Posts.Select(p => p.Id), StringComparer.OrdinalIgnoreCase);
+                            
+                            // Prune ReadCommentCount
+                            var keysToRemove = LocalData.ReadCommentCount.Keys.Where(k => !postIds.Contains(k)).ToList();
+                            foreach (var key in keysToRemove)
+                            {
+                                LocalData.ReadCommentCount.Remove(key);
+                            }
+
+                            // Prune ActiveNotification
+                            LocalData.ActiveNotification.RemoveAll(n => !postIds.Contains(n.PostId));
+
+                            // Cap at 50 notifications, keeping latest first
+                            LocalData.ActiveNotification = LocalData.ActiveNotification
+                                .OrderByDescending(n => n.Timestamp)
+                                .Take(50)
+                                .ToList();
+                        }
+                        SaveLocalData();
+                        return;
+                    }
+                }
+                LocalData = new LocalSocialData();
+            }
+            catch (Exception ex)
+            {
+                ModEntry.SMonitor.Log($"Failed to load local data: {ex}", StardewModdingAPI.LogLevel.Error);
+                LocalData = new LocalSocialData();
+            }
+        }
+
         private static void TrimPosts()
         {
             lock (Posts)
@@ -292,10 +376,6 @@ namespace SmartphoneAppStardewSocial
                 string statsFilePath = Path.Combine(directory, "profile_stat.json");
                 string statsJson = JsonConvert.SerializeObject(ProfileStats, Formatting.Indented);
                 File.WriteAllText(statsFilePath, statsJson);
-
-                string dismissedFilePath = Path.Combine(directory, "dismissed_notifications.json");
-                string dismissedJson = JsonConvert.SerializeObject(DismissedNotifications, Formatting.Indented);
-                File.WriteAllText(dismissedFilePath, dismissedJson);
             }
             catch (Exception ex)
             {
@@ -345,21 +425,13 @@ namespace SmartphoneAppStardewSocial
                     RebuildProfileStatsFromPosts();
                 }
 
-                string dismissedFilePath = Path.Combine(directory, "dismissed_notifications.json");
-                if (File.Exists(dismissedFilePath))
+                LoadLocalData();
+
+                lock (Posts)
                 {
-                    string json = File.ReadAllText(dismissedFilePath);
-                    var loadedDismissed = JsonConvert.DeserializeObject<HashSet<string>>(json);
-                    if (loadedDismissed != null)
+                    foreach (var post in Posts)
                     {
-                        lock (DismissedNotifications)
-                        {
-                            DismissedNotifications.Clear();
-                            foreach (var id in loadedDismissed)
-                            {
-                                DismissedNotifications.Add(id);
-                            }
-                        }
+                        CheckAndGenerateNotificationsForPost(post);
                     }
                 }
             }
@@ -371,36 +443,15 @@ namespace SmartphoneAppStardewSocial
 
         public static long GetLastVisitTime()
         {
-            try
-            {
-                string saveFolder = GetActiveSaveFolderName();
-                string filePath = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "last_visit.json");
-                if (File.Exists(filePath))
-                {
-                    string txt = File.ReadAllText(filePath);
-                    if (long.TryParse(txt.Trim(), out long timestamp))
-                    {
-                        return timestamp;
-                    }
-                }
-            }
-            catch { }
-            return 0;
+            return LocalData.LastVisit;
         }
 
         public static void SaveLastVisitTime()
         {
             try
             {
-                string saveFolder = GetActiveSaveFolderName();
-                string filePath = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "last_visit.json");
-                string directory = Path.GetDirectoryName(filePath);
-                if (!Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                File.WriteAllText(filePath, now.ToString());
+                LocalData.LastVisit = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                SaveLocalData();
             }
             catch { }
         }
@@ -421,37 +472,189 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
-        public static bool IsSocialNotificationDismissed(string key)
+        public static void AddNotification(string id, string postId, string text, long timestamp, bool read = false)
         {
-            return DismissedNotifications.Contains(key);
+            lock (LocalData.ActiveNotification)
+            {
+                var existing = LocalData.ActiveNotification.FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.Text = text;
+                    existing.Timestamp = timestamp;
+                    existing.Read = read;
+                }
+                else
+                {
+                    LocalData.ActiveNotification.Add(new StardewSocialNotification
+                    {
+                        Id = id,
+                        PostId = postId,
+                        Text = text,
+                        Timestamp = timestamp,
+                        Read = read
+                    });
+                }
+
+                // Cap at 50 notifications, keeping latest first
+                LocalData.ActiveNotification = LocalData.ActiveNotification
+                    .OrderByDescending(n => n.Timestamp)
+                    .ToList();
+
+                if (LocalData.ActiveNotification.Count > 50)
+                {
+                    LocalData.ActiveNotification = LocalData.ActiveNotification.Take(50).ToList();
+                }
+
+                SaveLocalData();
+            }
+        }
+
+        public static void CheckAndGenerateNotificationsForPost(StardewConnectPost post)
+        {
+            if (post == null) return;
+            string playerName = Game1.player?.Name ?? "Player";
+            string tagPattern = "@" + playerName;
+
+            // 1. Is the local player the author of this post?
+            bool isAuthor = post.AuthorIsPlayer && string.Equals(post.AuthorName, playerName, StringComparison.OrdinalIgnoreCase);
+
+            // 2. Find comments by other people sorted by timestamp
+            var otherComments = post.Comments
+                .Where(c => !string.Equals(c.AuthorName, playerName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.CreatedTime.Timestamp)
+                .ToList();
+
+            if (otherComments.Count == 0)
+                return;
+
+            // 3. Find comments tagging the local player
+            var tagComments = otherComments
+                .Where(c => (c.Text ?? "").Contains(tagPattern, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // 4. Decide if we should generate a notification
+            if (isAuthor)
+            {
+                var latestComment = otherComments.Last();
+                bool isLatestTag = (latestComment.Text ?? "").Contains(tagPattern, StringComparison.OrdinalIgnoreCase);
+
+                string text = "";
+                if (isLatestTag)
+                {
+                    string cleanAuthorName = Game1.getCharacterFromName(latestComment.AuthorName)?.displayName ?? latestComment.AuthorName;
+                    text = $"{cleanAuthorName} has tagged you in a comment.";
+                }
+                else
+                {
+                    var uniqueAuthors = new List<string>();
+                    foreach (var c in otherComments)
+                    {
+                        string cleanName = Game1.getCharacterFromName(c.AuthorName)?.displayName ?? c.AuthorName;
+                        if (!uniqueAuthors.Contains(cleanName))
+                        {
+                            uniqueAuthors.Add(cleanName);
+                        }
+                    }
+
+                    if (uniqueAuthors.Count == 1)
+                    {
+                        text = $"{uniqueAuthors[0]} has commented on your post.";
+                    }
+                    else if (uniqueAuthors.Count == 2)
+                    {
+                        text = $"{uniqueAuthors[0]} and {uniqueAuthors[1]} has commented on your post.";
+                    }
+                    else
+                    {
+                        text = $"{uniqueAuthors[0]}, {uniqueAuthors[1]} and others has commented on your post.";
+                    }
+                }
+
+                int readCount = GetPlayerReadCommentCount(post, playerName);
+                bool isUnread = post.Comments.IndexOf(latestComment) >= readCount;
+
+                AddNotification(post.Id, post.Id, text, latestComment.CreatedTime.Timestamp, read: !isUnread);
+            }
+            else if (tagComments.Count > 0)
+            {
+                var latestTagComment = tagComments.Last();
+                string cleanAuthorName = Game1.getCharacterFromName(latestTagComment.AuthorName)?.displayName ?? latestTagComment.AuthorName;
+                string text = $"{cleanAuthorName} has tagged you in a comment.";
+
+                int readCount = GetPlayerReadCommentCount(post, playerName);
+                bool isUnread = post.Comments.IndexOf(latestTagComment) >= readCount;
+
+                AddNotification(post.Id, post.Id, text, latestTagComment.CreatedTime.Timestamp, read: !isUnread);
+            }
+            else
+            {
+                // If not author and not tagged, remove any active notification for this post
+                lock (LocalData.ActiveNotification)
+                {
+                    LocalData.ActiveNotification.RemoveAll(n => string.Equals(n.Id, post.Id, StringComparison.OrdinalIgnoreCase));
+                }
+                SaveLocalData();
+            }
+        }
+
+        private static string GetPostIdFromNotification(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return "";
+            lock (LocalData.ActiveNotification)
+            {
+                var notif = LocalData.ActiveNotification.FirstOrDefault(n => string.Equals(n.Id, key, StringComparison.OrdinalIgnoreCase));
+                if (notif != null) return notif.PostId;
+            }
+            if (key.StartsWith("comment_"))
+            {
+                var parts = key.Split('_');
+                if (parts.Length > 1) return parts[1];
+            }
+            else if (key.StartsWith("tag_"))
+            {
+                string commentId = key.Substring(4);
+                lock (Posts)
+                {
+                    var post = Posts.FirstOrDefault(p => p.Comments.Any(c => string.Equals(c.Id, commentId, StringComparison.OrdinalIgnoreCase)));
+                    if (post != null) return post.Id;
+                }
+            }
+            return "";
         }
 
         public static void DismissSocialNotification(string key)
         {
             if (!string.IsNullOrWhiteSpace(key))
             {
-                lock (DismissedNotifications)
+                lock (LocalData.ActiveNotification)
                 {
-                    DismissedNotifications.Add(key);
+                    var notif = LocalData.ActiveNotification.FirstOrDefault(n => string.Equals(n.Id, key, StringComparison.OrdinalIgnoreCase));
+                    if (notif != null)
+                    {
+                        notif.Read = true;
+                        MarkPostCommentsRead(notif.PostId);
+                    }
                 }
-                Save();
+                SaveLocalData();
             }
         }
 
         public static void DismissSocialNotifications(string[] notificationIds)
         {
-            lock (DismissedNotifications)
+            lock (LocalData.ActiveNotification)
             {
                 foreach (var id in notificationIds)
                 {
-                    DismissedNotifications.Add(id);
+                    if (string.IsNullOrWhiteSpace(id)) continue;
+                    var notif = LocalData.ActiveNotification.FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.OrdinalIgnoreCase));
+                    if (notif != null)
+                    {
+                        notif.Read = true;
+                        MarkPostCommentsRead(notif.PostId);
+                    }
                 }
             }
-            Save();
-        }
-
-        public static void PruneSocialNotificationDismissals(IEnumerable<string> activeKeys)
-        {
+            SaveLocalData();
         }
 
         public static int GetPlayerReadCommentCount(StardewConnectPost post, string playerName)
@@ -460,23 +663,15 @@ namespace SmartphoneAppStardewSocial
                 return 0;
 
             post.Comments ??= new List<StardewConnectComment>();
-            post.PlayerReadCommentCounts ??= new List<StardewConnectPlayerReadCommentCount>();
 
-            string normalizedPlayerName = (playerName ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
-                normalizedPlayerName = Game1.player?.Name ?? "Player";
-
-            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
-                return 0;
-
-            StardewConnectPlayerReadCommentCount? found = post.PlayerReadCommentCounts
-                .FirstOrDefault(entry => entry != null
-                    && string.Equals(entry.PlayerName ?? "", normalizedPlayerName, StringComparison.OrdinalIgnoreCase));
-
-            if (found == null)
-                return 0;
-
-            return Math.Clamp(found.Count, 0, post.Comments.Count);
+            lock (LocalData.ReadCommentCount)
+            {
+                if (LocalData.ReadCommentCount.TryGetValue(post.Id, out int count))
+                {
+                    return Math.Clamp(count, 0, post.Comments.Count);
+                }
+            }
+            return 0;
         }
 
         public static void SetPlayerReadCommentCount(StardewConnectPost post, string playerName, int count)
@@ -485,34 +680,13 @@ namespace SmartphoneAppStardewSocial
                 return;
 
             post.Comments ??= new List<StardewConnectComment>();
-            post.PlayerReadCommentCounts ??= new List<StardewConnectPlayerReadCommentCount>();
-
-            string normalizedPlayerName = (playerName ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
-                normalizedPlayerName = Game1.player?.Name ?? "Player";
-
-            if (string.IsNullOrWhiteSpace(normalizedPlayerName))
-                return;
-
             int normalizedCount = Math.Clamp(count, 0, post.Comments.Count);
 
-            StardewConnectPlayerReadCommentCount? existing = post.PlayerReadCommentCounts
-                .FirstOrDefault(entry => entry != null
-                    && string.Equals(entry.PlayerName ?? "", normalizedPlayerName, StringComparison.OrdinalIgnoreCase));
-
-            if (existing == null)
+            lock (LocalData.ReadCommentCount)
             {
-                post.PlayerReadCommentCounts.Add(new StardewConnectPlayerReadCommentCount
-                {
-                    PlayerName = normalizedPlayerName,
-                    Count = normalizedCount
-                });
+                LocalData.ReadCommentCount[post.Id] = normalizedCount;
             }
-            else
-            {
-                existing.PlayerName = normalizedPlayerName;
-                existing.Count = normalizedCount;
-            }
+            SaveLocalData();
         }
 
         public static void MarkPostCommentsRead(string postId)
@@ -525,29 +699,33 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
-        public static bool TogglePostLikeByPlayer(string postId)
+        public static bool TogglePostLikeByPlayer(string postId, string? likerName = null)
         {
             var post = GetPost(postId);
             if (post == null) return false;
 
             bool result;
-            string likerName = Game1.player?.Name ?? "Player";
+            string actualLikerName = string.IsNullOrWhiteSpace(likerName) ? (Game1.player?.Name ?? "Player") : likerName;
             lock (post.LikedBy)
             {
-                bool alreadyLiked = post.LikedBy.Contains("Player") || post.LikedBy.Contains(likerName);
+                bool alreadyLiked = post.LikedBy.Contains("Player") || post.LikedBy.Contains(actualLikerName);
                 if (alreadyLiked)
                 {
                     post.LikedBy.Remove("Player");
-                    post.LikedBy.Remove(likerName);
+                    post.LikedBy.Remove(actualLikerName);
                     result = false;
                 }
                 else
                 {
-                    post.LikedBy.Add(likerName);
+                    post.LikedBy.Add(actualLikerName);
                     result = true;
                 }
             }
-            ApplyLikeStats(post, likerName, true, result);
+            ApplyLikeStats(post, actualLikerName, true, result);
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                BroadcastPostUpdate(post, new List<string> { actualLikerName, post.AuthorName });
+            }
             Save();
             return result;
         }
@@ -635,14 +813,14 @@ namespace SmartphoneAppStardewSocial
             SaveLastVisitTime();
         }
 
-        public static void AddPlayerPost(string text, List<string>? attachedImages = null, List<string>? tagged = null)
+        public static void AddPlayerPost(string text, List<string>? attachedImages = null, List<string>? tagged = null, string? authorName = null, bool authorIsPlayer = true, Dictionary<string, string>? photoTags = null)
         {
             string id = GeneratePostId();
             var newPost = new StardewConnectPost
             {
                 Id = id,
-                AuthorName = Game1.player?.Name ?? "Player",
-                AuthorIsPlayer = true,
+                AuthorName = string.IsNullOrWhiteSpace(authorName) ? (Game1.player?.Name ?? "Player") : authorName,
+                AuthorIsPlayer = authorIsPlayer,
                 Text = text,
                 CreatedTime = new StardewConnectTime
                 {
@@ -665,7 +843,11 @@ namespace SmartphoneAppStardewSocial
                 foreach (var img in attachedImages)
                 {
                     string tag = "";
-                    if (ModEntry.iSmartphoneApi != null)
+                    if (photoTags != null && photoTags.TryGetValue(img, out var customTag))
+                    {
+                        tag = customTag ?? "";
+                    }
+                    else if (ModEntry.iSmartphoneApi != null)
                     {
                         try
                         {
@@ -704,13 +886,35 @@ namespace SmartphoneAppStardewSocial
             }
             TrimPosts();
 
-            var authorStats = GetOrCreateProfileStats(newPost.AuthorName, true);
+            var authorStats = GetOrCreateProfileStats(newPost.AuthorName, authorIsPlayer);
             authorStats.TotalPosts++;
+
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer && string.Equals(newPost.AuthorName, Game1.player?.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                foreach (var img in attachedImages ?? Enumerable.Empty<string>())
+                {
+                    string absolutePath = Path.Combine(photoSharedDir, img);
+                    foreach (var farmer in Game1.getOnlineFarmers())
+                    {
+                        if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                        {
+                            TransferManager.QueueSend("Photo", img, absolutePath, farmer.UniqueMultiplayerID);
+                        }
+                    }
+                }
+            }
+
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                BroadcastPostUpdate(newPost, new List<string> { newPost.AuthorName });
+            }
 
             Save();
         }
 
-        public static void AddPlayerComment(string postId, string text)
+        public static void AddPlayerComment(string postId, string text, string? authorName = null, bool authorIsPlayer = true)
         {
             var post = GetPost(postId);
             if (post == null) return;
@@ -719,8 +923,8 @@ namespace SmartphoneAppStardewSocial
             var newComment = new StardewConnectComment
             {
                 Id = id,
-                AuthorName = Game1.player?.Name ?? "Player",
-                AuthorIsPlayer = true,
+                AuthorName = string.IsNullOrWhiteSpace(authorName) ? (Game1.player?.Name ?? "Player") : authorName,
+                AuthorIsPlayer = authorIsPlayer,
                 Text = text,
                 CreatedTime = new StardewConnectTime
                 {
@@ -735,8 +939,13 @@ namespace SmartphoneAppStardewSocial
             {
                 post.Comments.Add(newComment);
             }
-            ApplyCommentStats(post, newComment.AuthorName, true);
+            ApplyCommentStats(post, newComment.AuthorName, authorIsPlayer);
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                BroadcastPostUpdate(post, new List<string> { newComment.AuthorName, post.AuthorName });
+            }
             Save();
+            CheckAndGenerateNotificationsForPost(post);
         }
 
         public static bool DeletePost(string postId)
@@ -752,106 +961,64 @@ namespace SmartphoneAppStardewSocial
             {
                 RebuildProfileStatsFromPosts();
                 Save();
+
+                if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+                {
+                    BroadcastPostDelete(postId);
+                }
             }
             return deleted;
         }
 
-        public static List<StardewSocialNotification> GetActiveSocialNotifications()
+        public static void DeletePostLocally(string postId)
         {
-            var notifications = new List<StardewSocialNotification>();
-            string playerName = Game1.player?.Name ?? "Player";
-            string tagPattern = "@" + playerName;
-
-            var posts = GetPostsSnapshot();
-            foreach (var post in posts)
+            var post = GetPost(postId);
+            if (post == null) return;
+            bool deleted;
+            lock (Posts)
             {
-                if (post.AuthorIsPlayer)
+                deleted = Posts.Remove(post);
+            }
+            if (deleted)
+            {
+                RebuildProfileStatsFromPosts();
+                Save();
+
+                if (Game1.activeClickableMenu is StardewSocialScreen screen)
                 {
-                    // 1. Comment notifications
-                    var npcComments = post.Comments
-                        .Where(c => !c.AuthorIsPlayer)
-                        .OrderBy(c => c.CreatedTime.Timestamp)
-                        .ToList();
-
-                    if (npcComments.Count > 0)
-                    {
-                        string commentNotifId = "comment_" + post.Id;
-                        bool isDismissed;
-                        lock (DismissedNotifications)
-                        {
-                            isDismissed = DismissedNotifications.Contains(commentNotifId);
-                        }
-
-                        if (!isDismissed)
-                        {
-                            var uniqueNpcs = new List<string>();
-                            foreach (var c in npcComments)
-                            {
-                                string cleanName = Game1.getCharacterFromName(c.AuthorName)?.displayName ?? c.AuthorName;
-                                if (!uniqueNpcs.Contains(cleanName))
-                                {
-                                    uniqueNpcs.Add(cleanName);
-                                }
-                            }
-
-                            string text = "";
-                            if (uniqueNpcs.Count == 1)
-                            {
-                                text = $"{uniqueNpcs[0]} has commented on your post.";
-                            }
-                            else if (uniqueNpcs.Count == 2)
-                            {
-                                text = $"{uniqueNpcs[0]} and {uniqueNpcs[1]} has commented on your post.";
-                            }
-                            else
-                            {
-                                text = $"{uniqueNpcs[0]}, {uniqueNpcs[1]} and others has commented on your post.";
-                            }
-
-                            notifications.Add(new StardewSocialNotification
-                            {
-                                Id = commentNotifId,
-                                PostId = post.Id,
-                                Text = text,
-                                Timestamp = npcComments.Last().CreatedTime.Timestamp
-                            });
-                        }
-                    }
-
-                    // 2. Tag notifications
-                    foreach (var comment in npcComments)
-                    {
-                        if ((comment.Text ?? "").Contains(tagPattern, StringComparison.OrdinalIgnoreCase))
-                        {
-                            string tagNotifId = "tag_" + comment.Id;
-                            bool isDismissed;
-                            lock (DismissedNotifications)
-                            {
-                                isDismissed = DismissedNotifications.Contains(tagNotifId);
-                            }
-
-                            if (!isDismissed)
-                            {
-                                string cleanAuthorName = Game1.getCharacterFromName(comment.AuthorName)?.displayName ?? comment.AuthorName;
-                                notifications.Add(new StardewSocialNotification
-                                {
-                                    Id = tagNotifId,
-                                    PostId = post.Id,
-                                    Text = $"{cleanAuthorName} has tagged you in a comment.",
-                                    Timestamp = comment.CreatedTime.Timestamp
-                                });
-                            }
-                        }
-                    }
+                    screen.ClearCachesAndRecalculate();
                 }
             }
+        }
 
-            return notifications.OrderByDescending(n => n.Timestamp).ToList();
+        public static void BroadcastPostDelete(string postId)
+        {
+            if (!StardewModdingAPI.Context.IsWorldReady || !StardewModdingAPI.Context.IsMultiplayer || !StardewModdingAPI.Context.IsMainPlayer)
+                return;
+
+            foreach (var farmer in Game1.getOnlineFarmers())
+            {
+                if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                {
+                    TransferManager.SendDirectMessage(farmer.UniqueMultiplayerID, "PostDelete", postId);
+                }
+            }
+        }
+
+        public static List<StardewSocialNotification> GetActiveSocialNotifications()
+        {
+            lock (LocalData.ActiveNotification)
+            {
+                return LocalData.ActiveNotification.OrderByDescending(n => n.Timestamp).ToList();
+            }
         }
 
         public static int GetActiveSocialNotificationCount()
         {
-            return GetActiveSocialNotifications().Count;
+            lock (LocalData.ActiveNotification)
+            {
+                return LocalData.ActiveNotification.Count(n => !n.Read);
+            }
         }
 
         private static string BuildActorKey(string actorName, bool actorIsPlayer)
@@ -1105,6 +1272,29 @@ namespace SmartphoneAppStardewSocial
             var authorStats = GetOrCreateProfileStats(npcName, false);
             authorStats.TotalPosts++;
 
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                foreach (var photo in photos)
+                {
+                    string fileName = photo.Path;
+                    string absolutePath = Path.Combine(photoSharedDir, fileName);
+                    foreach (var farmer in Game1.getOnlineFarmers())
+                    {
+                        if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                        {
+                            TransferManager.QueueSend("Photo", fileName, absolutePath, farmer.UniqueMultiplayerID);
+                        }
+                    }
+                }
+            }
+
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                BroadcastPostUpdate(post, new List<string> { npcName });
+            }
+
             Save();
             return id;
         }
@@ -1158,7 +1348,12 @@ namespace SmartphoneAppStardewSocial
             }
 
             ApplyCommentStats(post, npcName, false);
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                BroadcastPostUpdate(post, new List<string> { npcName, post.AuthorName });
+            }
             Save();
+            CheckAndGenerateNotificationsForPost(post);
             return true;
         }
 
@@ -1192,6 +1387,10 @@ namespace SmartphoneAppStardewSocial
             if (changed)
             {
                 ApplyLikeStats(post, npcName, false, liked);
+                if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+                {
+                    BroadcastPostUpdate(post, new List<string> { npcName, post.AuthorName });
+                }
                 Save();
             }
 
@@ -1268,6 +1467,87 @@ namespace SmartphoneAppStardewSocial
                 .ToList();
 
             return topPosts[Game1.random.Next(topPosts.Count)].Id;
+        }
+
+        public static void BroadcastPostUpdate(StardewConnectPost post, List<string> actorNames)
+        {
+            if (!StardewModdingAPI.Context.IsWorldReady || !StardewModdingAPI.Context.IsMultiplayer || !StardewModdingAPI.Context.IsMainPlayer)
+                return;
+
+            var statsList = new List<StardewConnectProfileStats>();
+            foreach (var name in actorNames)
+            {
+                bool isPlayer = string.Equals(name, Game1.player.Name, StringComparison.OrdinalIgnoreCase) ||
+                                Game1.getOnlineFarmers().Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
+                
+                var stats = GetProfileStatsSnapshot(name, isPlayer);
+                if (stats != null)
+                {
+                    statsList.Add(stats);
+                }
+            }
+
+            var updateMsg = new StardewSocialUpdateMessage
+            {
+                Post = post,
+                Stats = statsList
+            };
+
+            string json = JsonConvert.SerializeObject(updateMsg);
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            string base64 = Convert.ToBase64String(bytes);
+
+            foreach (var farmer in Game1.getOnlineFarmers())
+            {
+                if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                {
+                    TransferManager.QueueSendBase64("PostUpdate", "update.json", base64, farmer.UniqueMultiplayerID);
+                }
+            }
+        }
+
+        public static void ApplyIncrementalUpdate(StardewSocialUpdateMessage update)
+        {
+            if (update.Post != null)
+            {
+                lock (Posts)
+                {
+                    int index = Posts.FindIndex(p => string.Equals(p.Id, update.Post.Id, StringComparison.OrdinalIgnoreCase));
+                    if (index >= 0)
+                    {
+                        Posts[index] = update.Post;
+                    }
+                    else
+                    {
+                        Posts.Add(update.Post);
+                    }
+                }
+            }
+
+            if (update.Stats != null)
+            {
+                lock (ProfileStats)
+                {
+                    foreach (var stat in update.Stats)
+                    {
+                        string key = BuildActorKey(stat.ActorName, stat.ActorIsPlayer);
+                        ProfileStats[key] = stat;
+                    }
+                }
+            }
+
+            TrimPosts();
+            Save();
+
+            if (update.Post != null)
+            {
+                CheckAndGenerateNotificationsForPost(update.Post);
+            }
+
+            if (Game1.activeClickableMenu is StardewSocialScreen screen)
+            {
+                screen.ClearCachesAndRecalculate();
+            }
         }
 
     }

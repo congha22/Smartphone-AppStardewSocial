@@ -46,6 +46,10 @@ namespace SmartphoneAppStardewSocial
             helper.Events.GameLoop.ReturnedToTitle += OnReturnedToTitle;
             helper.Events.GameLoop.DayStarted += OnDayStarted;
             helper.Events.GameLoop.TimeChanged += OnTimeChanged;
+
+            // Register multiplayer transfer handlers
+            helper.Events.GameLoop.UpdateTicked += TransferManager.OnUpdateTicked;
+            helper.Events.Multiplayer.ModMessageReceived += TransferManager.OnModMessageReceived;
         }
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
@@ -67,6 +71,11 @@ namespace SmartphoneAppStardewSocial
             foreach (var kvp in OutdoorAreasByLocation)
             {
                 areaTags[kvp.Key] = kvp.Value;
+            }
+
+            if (Context.IsMultiplayer && !Context.IsMainPlayer)
+            {
+                TransferManager.InitiateFarmhandSync();
             }
         }
 

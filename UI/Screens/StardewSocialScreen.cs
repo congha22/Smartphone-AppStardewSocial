@@ -137,6 +137,7 @@ namespace SmartphoneAppStardewSocial
         private Rectangle socialNotificationClearAllBounds = Rectangle.Empty;
         private Rectangle socialDetailCommentSendBounds = Rectangle.Empty;
         private Rectangle socialDetailLikeBounds = Rectangle.Empty;
+        private Rectangle socialDetailDeletePostBounds = Rectangle.Empty;
         private Rectangle socialProfileAvatarCameraButtonBounds = Rectangle.Empty;
         private Rectangle socialCreateSubmitBounds = Rectangle.Empty;
         private Rectangle socialCreateEmojiButtonBounds = Rectangle.Empty;
@@ -239,6 +240,38 @@ namespace SmartphoneAppStardewSocial
             this.postTextBox.Clear();
 
             CalculateLayout();
+        }
+
+        public void ClearCachesAndRecalculate()
+        {
+            this.socialCardHeightCache.Clear();
+            CalculateLayout();
+        }
+
+        private void ToggleLike(string postId)
+        {
+            if (!Context.IsMultiplayer || Context.IsMainPlayer)
+            {
+                bool liked = StardewConnectManager.TogglePostLikeByPlayer(postId);
+                Game1.playSound(liked ? "money" : "bigDeSelect");
+            }
+            else
+            {
+                if (Game1.MasterPlayer != null)
+                {
+                    var req = new ActionRequest
+                    {
+                        Action = "LikePost",
+                        PostId = postId,
+                        ActorName = Game1.player.Name
+                    };
+                    string reqJson = Newtonsoft.Json.JsonConvert.SerializeObject(req);
+                    TransferManager.SendDirectMessage(Game1.MasterPlayer.UniqueMultiplayerID, "ActionRequest", reqJson);
+                }
+                Game1.playSound("money");
+            }
+            this.socialCardHeightCache.Remove(postId + "_detail");
+            this.socialCardHeightCache.Remove(postId + "_feed");
         }
 
         private int ScaleUiValue(int baseValue)
@@ -371,7 +404,12 @@ namespace SmartphoneAppStardewSocial
             }
 
             // Notifications Max Scroll
-            int notifY = ScaleUiValue(10) + StardewConnectManager.GetActiveSocialNotificationCount() * ScaleUiValue(80);
+            int notifY = ScaleUiValue(10);
+            int notifCardWidth = clipRect.Width - ScaleUiValue(30);
+            foreach (var notif in StardewConnectManager.GetActiveSocialNotifications())
+            {
+                notifY += MeasureNotificationHeight(notif, notifCardWidth) + ScaleUiValue(10);
+            }
             this.maxScrollNotification = Math.Max(0, notifY - clipRect.Height);
 
             // Profile Max Scroll
@@ -397,6 +435,30 @@ namespace SmartphoneAppStardewSocial
                     this.maxScrollDetail = Math.Max(0, detailY - detailViewportHeight);
                 }
             }
+
+            // Clamp scroll targets and offsets to their respective max bounds
+            this.socialFeedScrollTarget = Math.Clamp(this.socialFeedScrollTarget, 0, this.maxScrollFeed);
+            this.socialFeedScrollOffset = Math.Clamp(this.socialFeedScrollOffset, 0, this.maxScrollFeed);
+
+            this.socialNotificationScrollTarget = Math.Clamp(this.socialNotificationScrollTarget, 0, this.maxScrollNotification);
+            this.socialNotificationScrollOffset = Math.Clamp(this.socialNotificationScrollOffset, 0, this.maxScrollNotification);
+
+            this.socialProfileScrollTarget = Math.Clamp(this.socialProfileScrollTarget, 0, this.maxScrollProfile);
+            this.socialProfileScrollOffset = Math.Clamp(this.socialProfileScrollOffset, 0, this.maxScrollProfile);
+
+            this.socialDetailScrollTarget = Math.Clamp(this.socialDetailScrollTarget, 0, this.maxScrollDetail);
+            this.socialDetailScrollOffset = Math.Clamp(this.socialDetailScrollOffset, 0, this.maxScrollDetail);
+        }
+
+        private int MeasureNotificationHeight(StardewSocialNotification notif, int cardWidth)
+        {
+            if (notif == null) return 0;
+            int textWrapWidth = GetPhoneScaledWrapWidth(cardWidth - ScaleUiValue(30), 0.9f);
+            List<string> lines = SplitTextIntoLines(notif.Text, Game1.smallFont, textWrapWidth);
+            int lineHeight = GetPhoneScaledLineHeight(Game1.smallFont, 0.9f);
+            int innerHeight = lines.Count * lineHeight;
+            int totalHeight = innerHeight + ScaleUiValue(34);
+            return Math.Max(ScaleUiValue(70), totalHeight);
         }
 
         private int MeasurePostHeight(StardewConnectPost post, bool isDetail)
@@ -519,6 +581,43 @@ namespace SmartphoneAppStardewSocial
             if (isDetailView)
             {
                 DrawCommentInputBox(b);
+
+                // Draw delete post button for author in the top nav bar area
+                var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                if (post != null && post.AuthorIsPlayer && string.Equals(post.AuthorName, Game1.player?.Name ?? "Player", StringComparison.OrdinalIgnoreCase))
+                {
+                    int topButtonsY = this.yPositionOnScreen + ScaleUiValue(62);
+                    int deleteBtnX = this.xPositionOnScreen + this.contentWidth - ScaleUiValue(55);
+                    this.socialDetailDeletePostBounds = new Rectangle(deleteBtnX, topButtonsY, ScaleUiValue(40), ScaleUiValue(40));
+
+                    IClickableMenu.drawTextureBox(
+                        b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                        this.socialDetailDeletePostBounds.X, this.socialDetailDeletePostBounds.Y,
+                        this.socialDetailDeletePostBounds.Width, this.socialDetailDeletePostBounds.Height,
+                        new Color(255, 255, 255, 220), 1f, false);
+
+                    int trashW = ScaleUiValue(16);
+                    int trashH = ScaleUiValue(26);
+                    b.Draw(
+                        Game1.mouseCursors,
+                        new Rectangle(
+                            this.socialDetailDeletePostBounds.X + (this.socialDetailDeletePostBounds.Width - trashW) / 2,
+                            this.socialDetailDeletePostBounds.Y + (this.socialDetailDeletePostBounds.Height - trashH) / 2,
+                            trashW,
+                            trashH
+                        ),
+                        new Rectangle(564, 102, 16, 26),
+                        Color.Red * 0.8f
+                    );
+                }
+                else
+                {
+                    this.socialDetailDeletePostBounds = Rectangle.Empty;
+                }
+            }
+            else
+            {
+                this.socialDetailDeletePostBounds = Rectangle.Empty;
             }
 
             // Draw phone border on top
@@ -1004,26 +1103,37 @@ namespace SmartphoneAppStardewSocial
 
             int cardX = clipRect.X + ScaleUiValue(15);
             int cursorY = clipRect.Y + ScaleUiValue(10) - (int)this.socialNotificationScrollOffset;
+            int cardWidth = clipRect.Width - ScaleUiValue(30);
 
             var activeNotifications = StardewConnectManager.GetActiveSocialNotifications();
             if (activeNotifications.Count == 0)
             {
-                DrawPhoneText(b, Game1.smallFont, "No new notifications.", new Vector2(cardX, cursorY + ScaleUiValue(15)), Color.Black);
+                DrawPhoneText(b, Game1.smallFont, "No new notifications.", new Vector2(cardX, cursorY + ScaleUiValue(15)), Color.Black, 0.9f);
             }
             else
             {
                 foreach (var notif in activeNotifications)
                 {
-                    int cardHeight = ScaleUiValue(70);
-                    Rectangle cardBounds = new Rectangle(cardX, cursorY, clipRect.Width - ScaleUiValue(30), cardHeight);
+                    int cardHeight = MeasureNotificationHeight(notif, cardWidth);
+                    Rectangle cardBounds = new Rectangle(cardX, cursorY, cardWidth, cardHeight);
                     this.socialNotificationItemBounds[notif.Id] = cardBounds;
 
                     IClickableMenu.drawTextureBox(
                         b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
                         cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
-                        new Color(255, 255, 255, 230), 1f, false);
+                        notif.Read ? new Color(180, 180, 180, 230) : new Color(255, 255, 255, 230), 1f, false);
 
-                    DrawPhoneText(b, Game1.smallFont, notif.Text, new Vector2(cardBounds.X + ScaleUiValue(14), cardBounds.Y + ScaleUiValue(22)), Color.Black);
+                    int textWrapWidth = GetPhoneScaledWrapWidth(cardWidth - ScaleUiValue(30), 0.9f);
+                    List<string> lines = SplitTextIntoLines(notif.Text, Game1.smallFont, textWrapWidth);
+                    int lineHeight = GetPhoneScaledLineHeight(Game1.smallFont, 0.9f);
+
+                    Color textColor = notif.Read ? Color.DimGray : Color.Black;
+                    int startTextY = cardBounds.Y + (cardBounds.Height - lines.Count * lineHeight) / 2;
+                    for (int i = 0; i < lines.Count; i++)
+                    {
+                        DrawPhoneText(b, Game1.smallFont, lines[i], new Vector2(cardBounds.X + ScaleUiValue(14), startTextY + i * lineHeight), textColor, 0.9f);
+                    }
+
                     cursorY += cardHeight + ScaleUiValue(10);
                 }
             }
@@ -1313,6 +1423,11 @@ namespace SmartphoneAppStardewSocial
             if (this.emojiMenu != null)
             {
                 this.emojiMenu.performHoverAction(x, y);
+            }
+
+            if (this.socialNotificationMenuOpen && !this.socialNotificationClearAllBounds.IsEmpty && this.socialNotificationClearAllBounds.Contains(x, y))
+            {
+                this.hoverText = "Mark All Read";
             }
         }
 
@@ -1630,7 +1745,61 @@ namespace SmartphoneAppStardewSocial
                     if (!string.IsNullOrWhiteSpace(this.postTextBox.Text))
                     {
                         var attachmentFiles = this.draftSelectedPhotos.Select(p => p.FileName).ToList();
-                        StardewConnectManager.AddPlayerPost(this.postTextBox.Text, attachmentFiles, this.draftTagged);
+                        
+                        // Copy draft photos to local photo_shared folder
+                        string saveFolder = StardewConnectManager.GetActiveSaveFolderName();
+                        string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                        Directory.CreateDirectory(photoSharedDir);
+                        foreach (var photo in this.draftSelectedPhotos)
+                        {
+                            if (photo.TextureData != null && photo.TextureData.Length > 0)
+                            {
+                                string destPath = Path.Combine(photoSharedDir, photo.FileName);
+                                try
+                                {
+                                    File.WriteAllBytes(destPath, photo.TextureData);
+                                }
+                                catch (Exception ex)
+                                {
+                                    ModEntry.SMonitor.Log($"Failed to write draft photo {photo.FileName}: {ex.Message}", LogLevel.Error);
+                                }
+                            }
+                        }
+
+                        var photoTags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var photo in this.draftSelectedPhotos)
+                        {
+                            photoTags[photo.FileName] = photo.Tag ?? "";
+                        }
+
+                        if (!Context.IsMultiplayer || Context.IsMainPlayer)
+                        {
+                            StardewConnectManager.AddPlayerPost(this.postTextBox.Text, attachmentFiles, this.draftTagged, photoTags: photoTags);
+                        }
+                        else
+                        {
+                            // Farmhand sends photos to Host, and requests post creation
+                            if (Game1.MasterPlayer != null)
+                            {
+                                foreach (var photo in this.draftSelectedPhotos)
+                                {
+                                    string absolutePath = Path.Combine(photoSharedDir, photo.FileName);
+                                    TransferManager.QueueSend("Photo", photo.FileName, absolutePath, Game1.MasterPlayer.UniqueMultiplayerID);
+                                }
+
+                                var req = new ActionRequest
+                                {
+                                    Action = "CreatePost",
+                                    Text = this.postTextBox.Text,
+                                    Photos = attachmentFiles,
+                                    Tagged = this.draftTagged,
+                                    ActorName = Game1.player.Name,
+                                    PhotoTags = photoTags
+                                };
+                                string reqJson = Newtonsoft.Json.JsonConvert.SerializeObject(req);
+                                TransferManager.SendDirectMessage(Game1.MasterPlayer.UniqueMultiplayerID, "ActionRequest", reqJson);
+                            }
+                        }
 
                         this.postTextBox.Clear();
                         this.draftTagged.Clear();
@@ -1743,6 +1912,12 @@ namespace SmartphoneAppStardewSocial
             }
             else if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
             {
+                if (!this.socialDetailDeletePostBounds.IsEmpty && this.socialDetailDeletePostBounds.Contains(x, y))
+                {
+                    DeleteCurrentPost();
+                    return;
+                }
+
                 if (this.socialDetailCommentSendBounds.Contains(x, y))
                 {
                     SendComment();
@@ -1751,10 +1926,7 @@ namespace SmartphoneAppStardewSocial
 
                 if (this.socialDetailLikeBounds.Contains(x, y))
                 {
-                    bool liked = StardewConnectManager.TogglePostLikeByPlayer(this.selectedSocialPostId);
-                    this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_detail");
-                    this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_feed");
-                    Game1.playSound(liked ? "money" : "bigDeSelect");
+                    ToggleLike(this.selectedSocialPostId);
                     return;
                 }
             }
@@ -1807,6 +1979,27 @@ namespace SmartphoneAppStardewSocial
                                 string destPath = Path.Combine(photoSharedDir, $"{id}_avatar.jpg");
                                 File.WriteAllBytes(destPath, results[0].TextureData);
 
+                                if (Context.IsMultiplayer)
+                                {
+                                    if (Context.IsMainPlayer)
+                                    {
+                                        foreach (var farmer in Game1.getOnlineFarmers())
+                                        {
+                                            if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                                            {
+                                                TransferManager.QueueSend("Avatar", $"{id}_avatar.jpg", destPath, farmer.UniqueMultiplayerID);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (Game1.MasterPlayer != null)
+                                        {
+                                            TransferManager.QueueSend("Avatar", $"{id}_avatar.jpg", destPath, Game1.MasterPlayer.UniqueMultiplayerID);
+                                        }
+                                    }
+                                }
+
                                 ClearAvatarCache();
                             }
                             catch (Exception ex)
@@ -1824,8 +2017,7 @@ namespace SmartphoneAppStardewSocial
                     {
                         if (pair.Value.Contains(x, y))
                         {
-                            bool liked = StardewConnectManager.TogglePostLikeByPlayer(pair.Key);
-                            Game1.playSound(liked ? "money" : "bigDeSelect");
+                            ToggleLike(pair.Key);
                             return;
                         }
                     }
@@ -1898,10 +2090,7 @@ namespace SmartphoneAppStardewSocial
                     {
                         if (pair.Value.Contains(x, y))
                         {
-                            bool liked = StardewConnectManager.TogglePostLikeByPlayer(pair.Key);
-                            this.socialCardHeightCache.Remove(pair.Key + "_detail");
-                            this.socialCardHeightCache.Remove(pair.Key + "_feed");
-                            Game1.playSound(liked ? "money" : "bigDeSelect");
+                            ToggleLike(pair.Key);
                             return;
                         }
                     }
@@ -2164,13 +2353,63 @@ namespace SmartphoneAppStardewSocial
         {
             if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId) && !string.IsNullOrWhiteSpace(this.commentTextBox.Text))
             {
-                StardewConnectManager.AddPlayerComment(this.selectedSocialPostId, this.commentTextBox.Text);
+                if (!Context.IsMultiplayer || Context.IsMainPlayer)
+                {
+                    StardewConnectManager.AddPlayerComment(this.selectedSocialPostId, this.commentTextBox.Text);
+                }
+                else
+                {
+                    if (Game1.MasterPlayer != null)
+                    {
+                        var req = new ActionRequest
+                        {
+                            Action = "CommentPost",
+                            PostId = this.selectedSocialPostId,
+                            CommentText = this.commentTextBox.Text,
+                            ActorName = Game1.player.Name
+                        };
+                        string reqJson = Newtonsoft.Json.JsonConvert.SerializeObject(req);
+                        TransferManager.SendDirectMessage(Game1.MasterPlayer.UniqueMultiplayerID, "ActionRequest", reqJson);
+                    }
+                }
                 this.commentTextBox.Clear();
                 this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_detail");
                 this.socialCardHeightCache.Remove(this.selectedSocialPostId + "_feed");
                 CalculateLayout();
                 this.socialDetailScrollTarget = 0f;
                 Game1.playSound("money");
+            }
+        }
+
+        private void DeleteCurrentPost()
+        {
+            if (string.IsNullOrWhiteSpace(this.selectedSocialPostId)) return;
+            
+            string postId = this.selectedSocialPostId;
+            
+            if (!Context.IsMultiplayer || Context.IsMainPlayer)
+            {
+                StardewConnectManager.DeletePost(postId);
+                Game1.playSound("trashcan");
+                this.selectedSocialPostId = "";
+                ClearCachesAndRecalculate();
+            }
+            else
+            {
+                if (Game1.MasterPlayer != null)
+                {
+                    var req = new ActionRequest
+                    {
+                        Action = "DeletePost",
+                        PostId = postId,
+                        ActorName = Game1.player.Name
+                    };
+                    string reqJson = Newtonsoft.Json.JsonConvert.SerializeObject(req);
+                    TransferManager.SendDirectMessage(Game1.MasterPlayer.UniqueMultiplayerID, "ActionRequest", reqJson);
+                }
+                Game1.playSound("trashcan");
+                this.selectedSocialPostId = "";
+                StardewConnectManager.DeletePostLocally(postId);
             }
         }
 
