@@ -20,6 +20,7 @@ namespace SmartphoneAppStardewSocial
 
         internal static ISmartPhoneApi? iSmartphoneApi;
         private Texture2D? appIcon;
+        private Dictionary<string, Texture2D> themedIcons = new(StringComparer.OrdinalIgnoreCase);
         private Texture2D? appBackgroundTexture;
         public static bool modReady = false;
 
@@ -189,7 +190,27 @@ namespace SmartphoneAppStardewSocial
         {
             try
             {
-                this.appIcon = this.Helper.ModContent.Load<Texture2D>("assets/app_social.png");
+                this.themedIcons.Clear();
+                try
+                {
+                    this.themedIcons["default"] = this.Helper.ModContent.Load<Texture2D>("assets/default/1x1.png");
+                }
+                catch (Exception ex)
+                {
+                    this.Monitor.Log($"Failed to load default theme icon: {ex.Message}", LogLevel.Error);
+                }
+
+                try
+                {
+                    this.themedIcons["v2"] = this.Helper.ModContent.Load<Texture2D>("assets/v2/1x1.png");
+                }
+                catch (Exception ex)
+                {
+                    this.Monitor.Log($"Failed to load v2 theme icon: {ex.Message}", LogLevel.Error);
+                }
+
+                string iconPath = Config.AppIconStyle == "v2" ? "assets/v2/1x1.png" : "assets/default/1x1.png";
+                this.appIcon = this.Helper.ModContent.Load<Texture2D>(iconPath);
                 this.appBackgroundTexture = this.Helper.ModContent.Load<Texture2D>("assets/background.png");
             }
             catch (Exception ex)
@@ -200,19 +221,18 @@ namespace SmartphoneAppStardewSocial
 
         private void RegisterStardewSocialApp()
         {
-            if (iSmartphoneApi == null || this.appIcon == null)
+            if (iSmartphoneApi == null || this.themedIcons.Count == 0)
                 return;
+
+            string compositeId = $"{this.ModManifest.UniqueID}::{AppId}";
 
             bool appRegistered = iSmartphoneApi.RegisterPhoneApp(
                 ownerModId: this.ModManifest.UniqueID,
                 appId: AppId,
-                displayName: "StardewSocial",
-                iconTexture: this.appIcon,
+                displayName: "Stardew Social",
                 onClick: this.OpenStardewSocialApp,
                 closePhoneOnLaunch: true,
-                sortOrder: 2,
                 sourceRect: null,
-                isVisible: () => Context.IsWorldReady,
                 getBadgeCount: () =>
                 {
                     try
@@ -223,14 +243,18 @@ namespace SmartphoneAppStardewSocial
                     {
                         return 0;
                     }
-                });
+                },
+                supportedSizes: new AppSize[] { AppSize.Size1x1, AppSize.Size2x1, AppSize.Size2x2 },
+                onDrawWidget: (b, rect, size) => SocialWidget.Draw(b, rect, size, this.appIcon ?? this.themedIcons["default"], this.appBackgroundTexture, iSmartphoneApi, compositeId),
+                themedIconTextures: this.themedIcons
+            );
 
             if (!appRegistered)
             {
                 this.Monitor.Log("Failed to register Stardew Social app.", LogLevel.Error);
                 return;
             }
-            
+
             modReady = true;
         }
 

@@ -18,17 +18,17 @@ namespace SmartphoneAppStardewSocial
         private readonly Action onBack;
 
         // Layout settings
-        private readonly int phoneFrameWidth;
-        private readonly int phoneFrameHeight;
-        private readonly int phoneContentOffsetX;
-        private readonly int phoneContentOffsetY;
-        private readonly float phoneUiScale;
+        private int phoneFrameWidth;
+        private int phoneFrameHeight;
+        private int phoneContentOffsetX;
+        private int phoneContentOffsetY;
+        private float phoneUiScale;
 
-        private readonly Texture2D? phoneFrameTexture;
-        private readonly Texture2D? phoneBackgroundTexture;
+        private Texture2D? phoneFrameTexture;
+        private Texture2D? phoneBackgroundTexture;
 
-        private readonly int contentWidth;
-        private readonly int contentHeight;
+        private int contentWidth;
+        private int contentHeight;
 
         // Navigation state
         private bool socialCreateMenuOpen = false;
@@ -84,9 +84,9 @@ namespace SmartphoneAppStardewSocial
                 hours = 12;
             }
             string timeString = $"{hours}:{minutes:D2}{ampm}";
-            
+
             string capSeason = string.IsNullOrEmpty(season) ? "" : char.ToUpper(season[0]) + season.Substring(1).ToLower();
-            
+
             return $"at {timeString} {capSeason} {day}";
         }
 
@@ -231,7 +231,7 @@ namespace SmartphoneAppStardewSocial
             this.height = this.phoneFrameHeight;
 
             this.contentWidth = Math.Max(1, this.phoneFrameWidth - (this.phoneContentOffsetX * 2));
-            this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleUiValue(80));
+            this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleUiValue(135));
 
             this.Selected = true;
             Game1.keyboardDispatcher.Subscriber = this;
@@ -586,7 +586,7 @@ namespace SmartphoneAppStardewSocial
                 var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
                 if (post != null && post.AuthorIsPlayer && string.Equals(post.AuthorName, Game1.player?.Name ?? "Player", StringComparison.OrdinalIgnoreCase))
                 {
-                    int topButtonsY = this.yPositionOnScreen + ScaleUiValue(62);
+                    int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(33);
                     int deleteBtnX = this.xPositionOnScreen + this.contentWidth - ScaleUiValue(55);
                     this.socialDetailDeletePostBounds = new Rectangle(deleteBtnX, topButtonsY, ScaleUiValue(40), ScaleUiValue(40));
 
@@ -630,8 +630,8 @@ namespace SmartphoneAppStardewSocial
             bool isViewingFeed = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && string.IsNullOrWhiteSpace(this.selectedSocialPostId);
             if (isViewingFeed)
             {
-                int topButtonsY = this.yPositionOnScreen + ScaleUiValue(65);
-                int createBtnX = this.xPositionOnScreen + ScaleUiValue(100);
+                int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(50);
+                int createBtnX = this.xPositionOnScreen + this.phoneContentOffsetX + ScaleUiValue(70);
 
                 this.socialFeedOpenCreatePostBounds = new Rectangle(createBtnX, topButtonsY, ScaleUiValue(150), ScaleUiValue(45));
                 this.socialFeedOpenProfileBounds = new Rectangle(this.socialFeedOpenCreatePostBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
@@ -654,7 +654,7 @@ namespace SmartphoneAppStardewSocial
                     this.socialFeedOpenNotificationBounds.X, this.socialFeedOpenNotificationBounds.Y,
                     this.socialFeedOpenNotificationBounds.Width, this.socialFeedOpenNotificationBounds.Height,
                     new Color(255, 255, 255, 220), 1f, false);
-                
+
                 Texture2D? notifIcon = this.smartphoneApi.GetAppTexture(AppIconType.Notification);
                 if (notifIcon != null)
                 {
@@ -699,6 +699,9 @@ namespace SmartphoneAppStardewSocial
             {
                 DrawCustomLikeTooltip(b, this.customLikeTooltipNames, this.tooltipMouseX, this.tooltipMouseY);
             }
+
+            // Draw scale adjustment buttons
+            this.smartphoneApi.DrawPhoneSizeButtons(b, this.xPositionOnScreen, this.yPositionOnScreen);
 
             drawMouse(b);
         }
@@ -810,7 +813,7 @@ namespace SmartphoneAppStardewSocial
             }
             string timeString = FormatTime(post.CreatedTime.Season, post.CreatedTime.Day, post.CreatedTime.TimeOfDay);
             DrawPhoneText(b, Game1.smallFont, authorDisplayText, new Vector2(actorIconBounds.Right + ScaleUiValue(10), cursorY + ScaleUiValue(2)), Color.Black);
-            
+
             // Reduced size & faded gray color (gap increased a bit more)
             DrawPhoneText(b, Game1.smallFont, timeString, new Vector2(actorIconBounds.Right + ScaleUiValue(10), cursorY + ScaleUiValue(36)), Color.Gray * 0.8f, SocialHeaderMetaScale);
 
@@ -863,7 +866,7 @@ namespace SmartphoneAppStardewSocial
                     photoIdx = 0;
                 }
                 photoIdx = Math.Clamp(photoIdx, 0, post.Photo.Count - 1);
-                
+
                 var photo = post.Photo[photoIdx];
                 var tex = GetPostPhotoTexture(post, photo);
                 int maxPhotoW = cardWidth - ScaleUiValue(30);
@@ -874,7 +877,7 @@ namespace SmartphoneAppStardewSocial
                     float scale = Math.Min((float)maxPhotoW / tex.Width, (float)ScaleUiValue(360) / tex.Height);
                     int drawW = (int)(tex.Width * scale);
                     int drawH = (int)(tex.Height * scale);
-                    
+
                     Rectangle photoRect = new Rectangle(
                         x + ScaleUiValue(15) + (maxPhotoW - drawW) / 2,
                         cursorY + (photoH - drawH) / 2,
@@ -1141,7 +1144,7 @@ namespace SmartphoneAppStardewSocial
             // Clear all button at bottom of scrolled view
             int clearBtnY = clipRect.Bottom - ScaleUiValue(75);
             this.socialNotificationClearAllBounds = new Rectangle(clipRect.Right - ScaleUiValue(75), clearBtnY, ScaleUiValue(60), ScaleUiValue(60));
-            
+
             IClickableMenu.drawTextureBox(
                 b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
                 this.socialNotificationClearAllBounds.X, this.socialNotificationClearAllBounds.Y,
@@ -1183,7 +1186,7 @@ namespace SmartphoneAppStardewSocial
                     avatarBounds.Bottom - ScaleUiValue(44) - ScaleUiValue(3),
                     ScaleUiValue(44),
                     ScaleUiValue(44));
-                
+
                 DrawSocialProfileAvatarCameraButton(b, this.socialProfileAvatarCameraButtonBounds);
             }
             else
@@ -1193,8 +1196,8 @@ namespace SmartphoneAppStardewSocial
 
             string ageLabel = GetSocialProfileAgeLabel(this.selectedSocialProfileActorName, this.selectedSocialProfileActorIsPlayer);
             string birthdayLabel = GetSocialProfileBirthdayLabel(this.selectedSocialProfileActorName, this.selectedSocialProfileActorIsPlayer);
-            string cleanName = this.selectedSocialProfileActorIsPlayer 
-                ? this.selectedSocialProfileActorName 
+            string cleanName = this.selectedSocialProfileActorIsPlayer
+                ? this.selectedSocialProfileActorName
                 : (Game1.getCharacterFromName(this.selectedSocialProfileActorName)?.displayName ?? this.selectedSocialProfileActorName);
 
             string[] infoLines =
@@ -1374,8 +1377,8 @@ namespace SmartphoneAppStardewSocial
             for (int i = 0; i < interactions.Count && i < 3; i++)
             {
                 StardewConnectProfileInteraction row = interactions[i];
-                string cleanName = row.ActorIsPlayer 
-                    ? row.ActorName 
+                string cleanName = row.ActorIsPlayer
+                    ? row.ActorName
                     : (Game1.getCharacterFromName(row.ActorName)?.displayName ?? row.ActorName);
                 string label = $"{i + 1}. {cleanName} ({row.Count})";
                 DrawPhoneText(b, Game1.smallFont, label, new Vector2(bounds.X, y), Color.DarkSlateGray, 0.9f);
@@ -1449,6 +1452,12 @@ namespace SmartphoneAppStardewSocial
 
             // Bottom navigation clicking
             if (this.smartphoneApi.HandlePhoneAppBottomNavClick(x, y, this.xPositionOnScreen, this.yPositionOnScreen, onBack: NavigateBack))
+            {
+                return;
+            }
+
+            // Size buttons click handling
+            if (this.smartphoneApi.HandlePhoneSizeButtonsClick(x, y, this.xPositionOnScreen, this.yPositionOnScreen))
             {
                 return;
             }
@@ -1545,6 +1554,10 @@ namespace SmartphoneAppStardewSocial
             else
             {
                 StardewConnectManager.SaveLastVisitTime();
+                if (Game1.keyboardDispatcher.Subscriber == this)
+                {
+                    Game1.keyboardDispatcher.Subscriber = null;
+                }
                 this.onBack?.Invoke();
             }
             CalculateLayout();
@@ -1745,7 +1758,7 @@ namespace SmartphoneAppStardewSocial
                     if (!string.IsNullOrWhiteSpace(this.postTextBox.Text))
                     {
                         var attachmentFiles = this.draftSelectedPhotos.Select(p => p.FileName).ToList();
-                        
+
                         // Copy draft photos to local photo_shared folder
                         string saveFolder = StardewConnectManager.GetActiveSaveFolderName();
                         string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
@@ -1843,7 +1856,7 @@ namespace SmartphoneAppStardewSocial
                                 }
                                 this.draftSelectedTextures.Clear();
                                 this.draftSelectedPhotos.Clear();
- 
+
                                 foreach (var result in results)
                                 {
                                     if (result.TextureData != null && result.TextureData.Length > 0)
@@ -2183,6 +2196,27 @@ namespace SmartphoneAppStardewSocial
 
         public override void update(GameTime time)
         {
+            // Sync from API if modified externally
+            float activeScale = this.smartphoneApi.GetPhoneUiScale();
+            if (Math.Abs(this.phoneUiScale - activeScale) > 0.001f)
+            {
+                this.phoneUiScale = activeScale;
+                this.phoneFrameWidth = this.smartphoneApi.GetPhoneFrameWidth();
+                this.phoneFrameHeight = this.smartphoneApi.GetPhoneFrameHeight();
+                var (offX, offY) = this.smartphoneApi.GetPhoneContentOffset();
+                this.phoneContentOffsetX = offX;
+                this.phoneContentOffsetY = offY;
+                this.phoneFrameTexture = this.smartphoneApi.GetPhoneFrameTexture();
+                this.phoneBackgroundTexture = this.smartphoneApi.GetPhoneBackgroundTexture();
+
+                this.width = this.phoneFrameWidth;
+                this.height = this.phoneFrameHeight;
+
+                this.contentWidth = Math.Max(1, this.phoneFrameWidth - (this.phoneContentOffsetX * 2));
+                this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleUiValue(135));
+                this.ClearCachesAndRecalculate();
+            }
+
             CalculateLayout();
             base.update(time);
 
@@ -2236,7 +2270,6 @@ namespace SmartphoneAppStardewSocial
                 int oldY = this.yPositionOnScreen;
                 this.xPositionOnScreen = Game1.getMouseX() - this.dragOffsetX;
                 this.yPositionOnScreen = Game1.getMouseY() - this.dragOffsetY;
-                ClampToViewport();
                 if (this.xPositionOnScreen != oldX || this.yPositionOnScreen != oldY)
                 {
                     this.smartphoneApi.SetPhonePosition(this.xPositionOnScreen, this.yPositionOnScreen);
@@ -2252,11 +2285,7 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
-        private void ClampToViewport()
-        {
-            this.xPositionOnScreen = Math.Max(0, Math.Min(this.xPositionOnScreen, Game1.uiViewport.Width - this.width));
-            this.yPositionOnScreen = Math.Max(0, Math.Min(this.yPositionOnScreen, Game1.uiViewport.Height - this.height));
-        }
+
 
         protected override void cleanupBeforeExit()
         {
@@ -2384,9 +2413,9 @@ namespace SmartphoneAppStardewSocial
         private void DeleteCurrentPost()
         {
             if (string.IsNullOrWhiteSpace(this.selectedSocialPostId)) return;
-            
+
             string postId = this.selectedSocialPostId;
-            
+
             if (!Context.IsMultiplayer || Context.IsMainPlayer)
             {
                 StardewConnectManager.DeletePost(postId);
@@ -2435,6 +2464,22 @@ namespace SmartphoneAppStardewSocial
 
         public override void receiveKeyPress(Keys key)
         {
+            bool isTyping = this.Selected && (this.socialCreateMenuOpen || !string.IsNullOrWhiteSpace(this.selectedSocialPostId));
+            if (!isTyping)
+            {
+                string keyStr = key.ToString();
+                if (keyStr == this.smartphoneApi.GetDecreaseSizeKey())
+                {
+                    this.smartphoneApi.AdjustPhoneSize(-0.1f);
+                    return;
+                }
+                if (keyStr == this.smartphoneApi.GetIncreaseSizeKey())
+                {
+                    this.smartphoneApi.AdjustPhoneSize(0.1f);
+                    return;
+                }
+            }
+
             if (key == Keys.Escape)
             {
                 NavigateBack();
@@ -2497,10 +2542,10 @@ namespace SmartphoneAppStardewSocial
         private string GetTextFromChatTextBox(ChatBox chatBoxInstance)
         {
             if (chatBoxInstance?.chatBox == null) return "";
-            
+
             var list = chatBoxInstance.chatBox.finalText;
             if (list == null) return "";
-            
+
             var sb = new System.Text.StringBuilder();
             foreach (var snippet in list)
             {
@@ -2514,14 +2559,14 @@ namespace SmartphoneAppStardewSocial
                     sb.Append(snippet.message);
                 }
             }
-            
+
             return sb.ToString();
         }
 
         private void ClearChatTextBox(ChatBox chatBoxInstance)
         {
             if (chatBoxInstance == null) return;
-            
+
             chatBoxInstance.chatBox?.setText("");
             chatBoxInstance.chatBox?.finalText?.Clear();
             chatBoxInstance.chatBox?.updateWidth();
@@ -2717,7 +2762,7 @@ namespace SmartphoneAppStardewSocial
             avatarFailedImagePaths.Clear();
         }
 
-        private bool TryGetAvatarTexture(string imagePath, out Texture2D texture)
+        public static bool TryGetAvatarTexture(string imagePath, out Texture2D texture)
         {
             texture = null!;
             if (string.IsNullOrWhiteSpace(imagePath))

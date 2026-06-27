@@ -53,6 +53,12 @@ namespace SmartphoneAppStardewSocial
                 save: () =>
                 {
                     Helper.WriteConfig(Config);
+                    try
+                    {
+                        Instance.LoadAssets();
+                        Instance.RegisterStardewSocialApp();
+                    }
+                    catch { }
                 }
             );
 
@@ -80,6 +86,26 @@ namespace SmartphoneAppStardewSocial
                 tooltip: () => "Show unread comment indicator.",
                 getValue: () => Config.ShowUnreadComment,
                 setValue: value => Config.ShowUnreadComment = value
+            );
+
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => "App Icon Style",
+                tooltip: () => "The style of the app icon on the smartphone home screen.",
+                getValue: () => string.IsNullOrWhiteSpace(Config.AppIconStyle) ? "default" : Config.AppIconStyle,
+                setValue: value =>
+                {
+                    Config.AppIconStyle = value == "v2" ? "v2" : "default";
+                    if (iSmartphoneApi != null)
+                    {
+                        try
+                        {
+                            iSmartphoneApi.SetComponentTheme("app_d5a1lamdtd.Smartphone-AppStardewSocial::StardewSocial", Config.AppIconStyle);
+                        }
+                        catch { }
+                    }
+                },
+                allowedValues: new string[] { "default", "v2" }
             );
 
             configMenu.AddPageLink(
