@@ -17,10 +17,10 @@ namespace SmartphoneAppStardewSocial
 
             // 1. Textbox for writing the post
             Rectangle inputBounds = new Rectangle(cardX, cursorY, clipRect.Width - ScaleUiValue(30), ScaleUiValue(180));
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 inputBounds.X, inputBounds.Y, inputBounds.Width, inputBounds.Height,
-                Color.White, 1f, false);
+                Color.Gainsboro, 1f, false);
 
             this.postTextBox.Draw(b, inputBounds, this.phoneUiScale, this.Selected);
 
@@ -65,11 +65,11 @@ namespace SmartphoneAppStardewSocial
             }
 
             this.socialCreatePhotoSelectBounds = new Rectangle(photoX, cursorY, btnSize, btnSize);
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 this.socialCreatePhotoSelectBounds.X, this.socialCreatePhotoSelectBounds.Y,
                 this.socialCreatePhotoSelectBounds.Width, this.socialCreatePhotoSelectBounds.Height,
-                Color.White, 1f, false);
+                Color.Gainsboro, 1f, false);
 
             Texture2D? photoIcon = this.smartphoneApi.GetAppTexture(AppIconType.Photo);
             if (photoIcon != null)
@@ -85,11 +85,11 @@ namespace SmartphoneAppStardewSocial
 
             // 3. Square Emoji button next to the Add Photos button (right aligned)
             this.socialCreateEmojiButtonBounds = new Rectangle(emojiX, cursorY, btnSize, btnSize);
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 this.socialCreateEmojiButtonBounds.X, this.socialCreateEmojiButtonBounds.Y,
                 this.socialCreateEmojiButtonBounds.Width, this.socialCreateEmojiButtonBounds.Height,
-                Color.White, 1f, false);
+                Color.Gainsboro, 1f, false);
 
             var emojiIconTexture = Game1.chatBox?.emojiMenuIcon?.texture ?? Game1.mouseCursors;
             var emojiIconSource = Game1.chatBox?.emojiMenuIcon?.sourceRect ?? new Rectangle(0, 0, 64, 64);
@@ -108,11 +108,11 @@ namespace SmartphoneAppStardewSocial
                 Rectangle previewRect = new Rectangle(cardX, cursorY, previewPanelWidth, previewPanelHeight);
 
                 // Draw background panel
-                IClickableMenu.drawTextureBox(
-                    b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                UI.CardDrawing.DrawCard(
+                    b,
                     previewRect.X, previewRect.Y,
                     previewRect.Width, previewRect.Height,
-                    new Color(255, 255, 255, 220), 1f, false);
+                    Color.Snow, 1f, false);
 
                 // Scale image down inside the panel with padding
                 float scale = Math.Min(
@@ -168,11 +168,11 @@ namespace SmartphoneAppStardewSocial
             this.socialCreateSubmitBounds = new Rectangle(clipRect.Right - ScaleUiValue(135), bottomBtnsY, ScaleUiValue(120), ScaleUiValue(50));
 
             // Draw Cancel
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 this.socialCreateCancelBounds.X, this.socialCreateCancelBounds.Y,
                 this.socialCreateCancelBounds.Width, this.socialCreateCancelBounds.Height,
-                Color.White, 1f, false);
+                Color.OrangeRed, 1f, false);
             Vector2 cancelSize = MeasurePhoneText(Game1.smallFont, "Cancel");
             Vector2 cancelPos = new Vector2(
                 this.socialCreateCancelBounds.X + (this.socialCreateCancelBounds.Width - cancelSize.X) / 2f,
@@ -181,11 +181,11 @@ namespace SmartphoneAppStardewSocial
             DrawPhoneText(b, Game1.smallFont, "Cancel", cancelPos, Color.Black);
 
             // Draw Publish
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 this.socialCreateSubmitBounds.X, this.socialCreateSubmitBounds.Y,
                 this.socialCreateSubmitBounds.Width, this.socialCreateSubmitBounds.Height,
-                Color.White, 1f, false);
+                Color.LightGreen, 1f, false);
             Vector2 publishSize = MeasurePhoneText(Game1.smallFont, "Publish");
             Vector2 publishPos = new Vector2(
                 this.socialCreateSubmitBounds.X + (this.socialCreateSubmitBounds.Width - publishSize.X) / 2f,
@@ -207,8 +207,8 @@ namespace SmartphoneAppStardewSocial
                 clipRect.Height - (margin * 2));
 
             // Tagging Menu card
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 popupRect.X, popupRect.Y, popupRect.Width, popupRect.Height,
                 Color.White, 1f, false);
 
@@ -219,8 +219,8 @@ namespace SmartphoneAppStardewSocial
 
             // Search Filter Box
             Rectangle searchBounds = new Rectangle(popupRect.X + ScaleUiValue(15), popupRect.Y + ScaleUiValue(50), popupRect.Width - ScaleUiValue(30), ScaleUiValue(56));
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 searchBounds.X, searchBounds.Y, searchBounds.Width, searchBounds.Height,
                 Color.White, 1f, false);
             this.tagSearchTextBox.Draw(b, searchBounds, this.phoneUiScale, this.Selected);
@@ -228,8 +228,8 @@ namespace SmartphoneAppStardewSocial
             // Done button at bottom
             Rectangle doneBounds = new Rectangle(popupRect.X + ScaleUiValue(15), popupRect.Bottom - ScaleUiValue(60), popupRect.Width - ScaleUiValue(30), ScaleUiValue(45));
             this.socialTagMenuDoneBounds = doneBounds;
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 doneBounds.X, doneBounds.Y, doneBounds.Width, doneBounds.Height,
                 Color.White, 1f, false);
             Vector2 doneSize = MeasurePhoneText(Game1.smallFont, "Done", 0.8f);
@@ -281,12 +281,12 @@ namespace SmartphoneAppStardewSocial
                 // Tag checkmark checkbox
                 bool isTagged = this.draftTagged.Contains(name);
                 Rectangle checkRect = new Rectangle(rowBounds.Right - ScaleUiValue(45), rowBounds.Y + ScaleUiValue(10), ScaleUiValue(35), ScaleUiValue(35));
-                
-                IClickableMenu.drawTextureBox(
-                    b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+
+                UI.CardDrawing.DrawCard(
+                    b,
                     checkRect.X, checkRect.Y, checkRect.Width, checkRect.Height,
                     isTagged ? Color.Green * 0.8f : Color.White, 1f, false);
-                
+
                 if (isTagged)
                 {
                     b.Draw(Game1.mouseCursors, new Rectangle(checkRect.X + ScaleUiValue(5), checkRect.Y + ScaleUiValue(5), ScaleUiValue(25), ScaleUiValue(25)), new Rectangle(128, 256, 64, 64), Color.White);

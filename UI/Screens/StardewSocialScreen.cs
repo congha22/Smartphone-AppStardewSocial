@@ -591,6 +591,13 @@ namespace SmartphoneAppStardewSocial
             Game1.graphics.GraphicsDevice.ScissorRectangle = previousScissor;
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
+
+            // Draw phone border on top
+            if (this.phoneFrameTexture != null && !this.phoneFrameTexture.IsDisposed)
+            {
+                b.Draw(this.phoneFrameTexture, frameRect, Color.White);
+            }
+
             if (isDetailView)
             {
                 DrawCommentInputBox(b);
@@ -599,18 +606,18 @@ namespace SmartphoneAppStardewSocial
                 var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
                 if (post != null && post.AuthorIsPlayer && string.Equals(post.AuthorName, Game1.player?.Name ?? "Player", StringComparison.OrdinalIgnoreCase))
                 {
-                    int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(33);
-                    int deleteBtnX = this.xPositionOnScreen + this.contentWidth - ScaleUiValue(55);
-                    this.socialDetailDeletePostBounds = new Rectangle(deleteBtnX, topButtonsY, ScaleUiValue(40), ScaleUiValue(40));
+                    int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(54);
+                    int deleteBtnX = this.xPositionOnScreen + this.contentWidth - ScaleUiValue(160);
+                    this.socialDetailDeletePostBounds = new Rectangle(deleteBtnX, topButtonsY, ScaleUiValue(50), ScaleUiValue(52));
 
-                    IClickableMenu.drawTextureBox(
-                        b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                    UI.CardDrawing.DrawCard(
+                        b,
                         this.socialDetailDeletePostBounds.X, this.socialDetailDeletePostBounds.Y,
                         this.socialDetailDeletePostBounds.Width, this.socialDetailDeletePostBounds.Height,
-                        new Color(255, 255, 255, 220), 1f, false);
+                        Color.OrangeRed, 1f, false);
 
-                    int trashW = ScaleUiValue(16);
-                    int trashH = ScaleUiValue(26);
+                    int trashW = ScaleUiValue(24);
+                    int trashH = ScaleUiValue(39);
                     b.Draw(
                         Game1.mouseCursors,
                         new Rectangle(
@@ -620,7 +627,7 @@ namespace SmartphoneAppStardewSocial
                             trashH
                         ),
                         new Rectangle(564, 102, 16, 26),
-                        Color.Red * 0.8f
+                        Color.White
                     );
                 }
                 else
@@ -633,12 +640,6 @@ namespace SmartphoneAppStardewSocial
                 this.socialDetailDeletePostBounds = Rectangle.Empty;
             }
 
-            // Draw phone border on top
-            if (this.phoneFrameTexture != null && !this.phoneFrameTexture.IsDisposed)
-            {
-                b.Draw(this.phoneFrameTexture, frameRect, Color.White);
-            }
-
             // Draw Static Top Buttons if viewing feed
             bool isViewingFeed = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && string.IsNullOrWhiteSpace(this.selectedSocialPostId);
             if (isViewingFeed)
@@ -647,23 +648,23 @@ namespace SmartphoneAppStardewSocial
                 int createBtnX = this.xPositionOnScreen + this.phoneContentOffsetX + ScaleUiValue(70);
 
                 this.socialFeedOpenCreatePostBounds = new Rectangle(createBtnX, topButtonsY, ScaleUiValue(150), ScaleUiValue(45));
-                this.socialFeedOpenProfileBounds = new Rectangle(this.socialFeedOpenCreatePostBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
-                this.socialFeedOpenNotificationBounds = new Rectangle(this.socialFeedOpenProfileBounds.Right + ScaleUiValue(12), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
+                this.socialFeedOpenProfileBounds = new Rectangle(this.socialFeedOpenCreatePostBounds.Right + ScaleUiValue(8), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
+                this.socialFeedOpenNotificationBounds = new Rectangle(this.socialFeedOpenProfileBounds.Right + ScaleUiValue(8), topButtonsY, ScaleUiValue(45), ScaleUiValue(45));
 
                 // Draw Create Post button
-                IClickableMenu.drawTextureBox(
-                    b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                UI.CardDrawing.DrawCard(
+                    b,
                     this.socialFeedOpenCreatePostBounds.X, this.socialFeedOpenCreatePostBounds.Y,
                     this.socialFeedOpenCreatePostBounds.Width, this.socialFeedOpenCreatePostBounds.Height,
-                    new Color(255, 255, 255, 220), 1f, false);
+                    Color.LightGreen, 1f, false);
                 DrawPhoneText(b, Game1.smallFont, "Create ...", new Vector2(this.socialFeedOpenCreatePostBounds.X + ScaleUiValue(14), this.socialFeedOpenCreatePostBounds.Y + ScaleUiValue(8)), Color.Black);
 
                 // Draw Profile button
                 DrawSocialActorIcon(b, Game1.player?.Name ?? "Player", true, this.socialFeedOpenProfileBounds);
 
                 // Draw Notification button
-                IClickableMenu.drawTextureBox(
-                    b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                UI.CardDrawing.DrawCard(
+                    b,
                     this.socialFeedOpenNotificationBounds.X, this.socialFeedOpenNotificationBounds.Y,
                     this.socialFeedOpenNotificationBounds.Width, this.socialFeedOpenNotificationBounds.Height,
                     new Color(255, 255, 255, 220), 1f, false);
@@ -770,8 +771,8 @@ namespace SmartphoneAppStardewSocial
             }
 
             // Card body background
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
                 Color.White, 1f, false);
 
@@ -1105,8 +1106,8 @@ namespace SmartphoneAppStardewSocial
             int badgeHeight = Math.Max(ScaleUiValue(20), (int)textSize.Y + ScaleUiValue(4));
             int badgeX = rightX - badgeWidth;
 
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 badgeX, y, badgeWidth, badgeHeight,
                 new Color(220, 0, 0, 170), 1f, false);
 
@@ -1134,8 +1135,8 @@ namespace SmartphoneAppStardewSocial
                     Rectangle cardBounds = new Rectangle(cardX, cursorY, cardWidth, cardHeight);
                     this.socialNotificationItemBounds[notif.Id] = cardBounds;
 
-                    IClickableMenu.drawTextureBox(
-                        b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+                    UI.CardDrawing.DrawCard(
+                        b,
                         cardBounds.X, cardBounds.Y, cardBounds.Width, cardBounds.Height,
                         notif.Read ? new Color(180, 180, 180, 230) : new Color(255, 255, 255, 230), 1f, false);
 
@@ -1158,8 +1159,8 @@ namespace SmartphoneAppStardewSocial
             int clearBtnY = clipRect.Bottom - ScaleUiValue(75);
             this.socialNotificationClearAllBounds = new Rectangle(clipRect.Right - ScaleUiValue(75), clearBtnY, ScaleUiValue(60), ScaleUiValue(60));
 
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 this.socialNotificationClearAllBounds.X, this.socialNotificationClearAllBounds.Y,
                 this.socialNotificationClearAllBounds.Width, this.socialNotificationClearAllBounds.Height,
                 Color.White, 1f, false);
@@ -1180,8 +1181,8 @@ namespace SmartphoneAppStardewSocial
             // Profile Info header box
             int headerHeight = ScaleUiValue(210 + 30);
             Rectangle headerBounds = new Rectangle(cardX, cursorY, cardWidth, headerHeight);
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 headerBounds.X, headerBounds.Y, headerBounds.Width / 2 + ScaleUiValue(5), headerBounds.Height,
                 new Color(255, 255, 255, 230), 1f, false);
 
@@ -1234,8 +1235,8 @@ namespace SmartphoneAppStardewSocial
 
             // Stats box
             Rectangle statsBounds = new Rectangle(cardX, cursorY, cardWidth, ScaleUiValue(135));
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 statsBounds.X, statsBounds.Y, statsBounds.Width, statsBounds.Height,
                 new Color(255, 255, 255, 230), 1f, false);
 
@@ -1290,8 +1291,8 @@ namespace SmartphoneAppStardewSocial
 
             // Interactions box
             Rectangle interBounds = new Rectangle(cardX, cursorY, cardWidth, ScaleUiValue(178));
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 interBounds.X, interBounds.Y, interBounds.Width, interBounds.Height,
                 new Color(255, 255, 255, 230), 1f, false);
 
@@ -1359,8 +1360,8 @@ namespace SmartphoneAppStardewSocial
                 ? new Color(95, 145, 185, 135)
                 : new Color(20, 20, 20, 110);
 
-            IClickableMenu.drawTextureBox(
-                b, Game1.menuTexture, new Rectangle(0, 256, 60, 60),
+            UI.CardDrawing.DrawCard(
+                b,
                 bounds.X, bounds.Y, bounds.Width, bounds.Height,
                 boxColor, 1f, false);
 
@@ -2668,10 +2669,8 @@ namespace SmartphoneAppStardewSocial
             x = Math.Clamp(x, ScaleUiValue(15), maxX);
             y = Math.Clamp(y, ScaleUiValue(15), maxY);
 
-            IClickableMenu.drawTextureBox(
+            UI.CardDrawing.DrawCard(
                 b,
-                Game1.menuTexture,
-                new Rectangle(0, 256, 60, 60),
                 x,
                 y,
                 boxWidth,
@@ -2712,10 +2711,8 @@ namespace SmartphoneAppStardewSocial
             x = Math.Clamp(x, ScaleUiValue(15), maxX);
             y = Math.Clamp(y, ScaleUiValue(15), maxY);
 
-            IClickableMenu.drawTextureBox(
+            UI.CardDrawing.DrawCard(
                 b,
-                Game1.menuTexture,
-                new Rectangle(0, 256, 60, 60),
                 x,
                 y,
                 boxWidth,
