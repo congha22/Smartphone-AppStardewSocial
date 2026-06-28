@@ -246,12 +246,52 @@ namespace SmartphoneAppStardewSocial
             : this(api, onBack)
         {
             this.selectedSocialProfileActorName = npcName;
-            this.selectedSocialProfileActorIsPlayer = false;
+            this.selectedSocialProfileActorIsPlayer = Game1.getOnlineFarmers().Any(f => string.Equals(f.Name, npcName, StringComparison.OrdinalIgnoreCase)) || string.Equals(Game1.player?.Name, npcName, StringComparison.OrdinalIgnoreCase);
             this.selectedSocialPostId = "";
             this.socialProfileMenuOpen = true;
             this.socialProfileDetailBackStack = false;
             this.socialProfileScrollOffset = 0f;
             this.socialProfileScrollTarget = 0f;
+            CalculateLayout();
+        }
+
+        public StardewSocialScreen(ISmartPhoneApi api, Action onBack, string? text, string? taggedNpc, string? imagePath, string? postTags = null)
+            : this(api, onBack)
+        {
+            this.socialCreateMenuOpen = true;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                this.postTextBox.Text = text;
+                this.postTextBox.CursorIndex = text.Length;
+                this.postTextBox.SelectionAnchorIndex = text.Length;
+            }
+            if (!string.IsNullOrWhiteSpace(taggedNpc))
+            {
+                this.draftTagged.Add(taggedNpc);
+            }
+            if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
+            {
+                try
+                {
+                    byte[] data = File.ReadAllBytes(imagePath);
+                    string fileName = Path.GetFileName(imagePath);
+                    var photoResult = new SelectedPhotoResult
+                    {
+                        AbsolutePath = imagePath,
+                        FileName = fileName,
+                        TextureData = data,
+                        Tag = !string.IsNullOrWhiteSpace(postTags) ? postTags : ModEntry.GetNpcPhotoTag(imagePath)
+                    };
+                    this.draftSelectedPhotos.Add(photoResult);
+
+                    var tex = Texture2D.FromStream(Game1.graphics.GraphicsDevice, new MemoryStream(data));
+                    this.draftSelectedTextures.Add(tex);
+                }
+                catch (Exception ex)
+                {
+                    ModEntry.SMonitor.Log($"Failed to load draft photo from {imagePath}: {ex.Message}", LogLevel.Error);
+                }
+            }
             CalculateLayout();
         }
 
@@ -1404,6 +1444,16 @@ namespace SmartphoneAppStardewSocial
         {
             if (actorIsPlayer)
             {
+                // Find the specific farmer by their name profile target
+                Farmer? farmer = Game1.getAllFarmers().FirstOrDefault(f => string.Equals(f.Name, actorName, StringComparison.OrdinalIgnoreCase));
+                if (farmer != null)
+                {
+                    string messengerModId = "d5a1lamdtd.Smartphone-AppMessenger";
+                    if (farmer.modData.TryGetValue($"{messengerModId}/Age", out string fAge) && !string.IsNullOrWhiteSpace(fAge))
+                    {
+                        return fAge;
+                    }
+                }
                 return "Unknown";
             }
 
@@ -1418,6 +1468,22 @@ namespace SmartphoneAppStardewSocial
         {
             if (actorIsPlayer)
             {
+                // Find the specific farmer by their name profile target
+                Farmer? farmer = Game1.getAllFarmers().FirstOrDefault(f => string.Equals(f.Name, actorName, StringComparison.OrdinalIgnoreCase));
+                if (farmer != null)
+                {
+                    string messengerModId = "d5a1lamdtd.Smartphone-AppMessenger";
+                    if (farmer.modData.TryGetValue($"{messengerModId}/BirthDate", out string fDay) &&
+                        farmer.modData.TryGetValue($"{messengerModId}/BirthSeason", out string fSeason))
+                    {
+                        if (!string.IsNullOrWhiteSpace(fDay) && !string.IsNullOrWhiteSpace(fSeason))
+                        {
+                            // Clean up string casing (e.g., "spring" -> "Spring")
+                            string fSeasonLabel = char.ToUpperInvariant(fSeason[0]) + fSeason.Substring(1).ToLowerInvariant();
+                            return $"{fSeasonLabel} {fDay}";
+                        }
+                    }
+                }
                 return "Unknown";
             }
 

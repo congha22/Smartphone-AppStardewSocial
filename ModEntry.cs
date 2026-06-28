@@ -290,6 +290,12 @@ namespace SmartphoneAppStardewSocial
                 () => iSmartphoneApi.OpenPhoneHomeScreen());
         }
 
+        /// <summary>Exposes the API for other mods to interact with the Stardew Social app.</summary>
+        public override object? GetApi()
+        {
+            return new StardewSocialApi();
+        }
+
         /// <summary>
         /// Stores a tag for an NPC photo file captured via the Smartphone framework API.
         /// Called after a successful CaptureNpcPhoto API call so the tag can be retrieved later.
@@ -315,6 +321,48 @@ namespace SmartphoneAppStardewSocial
                 return tag ?? string.Empty;
 
             return string.Empty;
+        }
+    }
+
+    public class StardewSocialApi : IStardewSocialApi
+    {
+        public void CreateDraftPost(string? text = null, string? taggedNpc = null, string? imagePath = null, string? postTags = null)
+        {
+            if (!Context.IsWorldReady || ModEntry.iSmartphoneApi == null)
+                return;
+
+            Game1.activeClickableMenu = new StardewSocialScreen(
+                ModEntry.iSmartphoneApi,
+                () => ModEntry.iSmartphoneApi.OpenPhoneHomeScreen(),
+                text,
+                taggedNpc,
+                imagePath,
+                postTags
+            );
+        }
+
+        public void CreateNpcPost(string authorName, string? taggedNpc = null, string? text = null, string? imagePath = null, string? postTags = null)
+        {
+            // Allowed on host only
+            if (!Context.IsWorldReady || !Context.IsMainPlayer)
+                return;
+
+            StardewConnectManager.AddNpcPost(authorName, text, imagePath, taggedNpc, postTags);
+        }
+
+        public void OpenProfile(string actorName)
+        {
+            if (string.IsNullOrWhiteSpace(actorName))
+                return;
+
+            if (!Context.IsWorldReady || ModEntry.iSmartphoneApi == null)
+                return;
+
+            Game1.activeClickableMenu = new StardewSocialScreen(
+                ModEntry.iSmartphoneApi,
+                actorName,
+                () => ModEntry.iSmartphoneApi.OpenPhoneHomeScreen()
+            );
         }
     }
 }

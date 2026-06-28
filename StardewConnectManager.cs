@@ -1313,6 +1313,114 @@ namespace SmartphoneAppStardewSocial
             return id;
         }
 
+        /// <summary>Adds a new post by an NPC programmatically. Returns the post ID, or null if failed.</summary>
+        public static string? AddNpcPost(string npcName, string? text, string? imagePath = null, string? taggedNpc = null, string? postTags = null)
+        {
+            if (string.IsNullOrWhiteSpace(npcName))
+                return null;
+
+            if (Game1.getCharacterFromName(npcName, mustBeVillager: false) == null)
+                return null;
+
+            string textVal = (text ?? string.Empty).Trim();
+            var photos = new List<StardewConnectPhoto>();
+            var attachedImages = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(imagePath) && System.IO.File.Exists(imagePath))
+            {
+                string trimmedFile = imagePath.Trim();
+                string fileName = System.IO.Path.GetFileName(trimmedFile);
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = System.IO.Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                System.IO.Directory.CreateDirectory(photoSharedDir);
+                string destPath = System.IO.Path.Combine(photoSharedDir, fileName);
+
+                try
+                {
+                    if (!string.Equals(System.IO.Path.GetFullPath(trimmedFile), System.IO.Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                    {
+                        System.IO.File.Copy(trimmedFile, destPath, overwrite: true);
+                    }
+                    EnforcePhotoSharedRetention();
+                    attachedImages.Add(fileName);
+
+                    string tag = !string.IsNullOrWhiteSpace(postTags) ? postTags : ModEntry.GetNpcPhotoTag(trimmedFile);
+                    photos.Add(new StardewConnectPhoto { Path = fileName, Tag = tag });
+                }
+                catch (Exception ex)
+                {
+                    ModEntry.SMonitor.Log($"Failed to copy NPC photo to shared: {ex.Message}", StardewModdingAPI.LogLevel.Error);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(textVal) && photos.Count == 0)
+                return null;
+
+            string id = CreateShortAlphanumericId();
+            var uniqueTags = photos
+                .SelectMany(p => (p.Tag ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var post = new StardewConnectPost
+            {
+                Id = id,
+                AuthorName = npcName,
+                AuthorIsPlayer = false,
+                Text = textVal,
+                Photo = photos,
+                PostTags = uniqueTags,
+                CreatedTime = new StardewConnectTime
+                {
+                    Season = Game1.currentSeason ?? "spring",
+                    Day = Game1.dayOfMonth,
+                    Year = Game1.year,
+                    TimeOfDay = Game1.timeOfDay,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                },
+                LikedBy = new List<string>(),
+                Comments = new List<StardewConnectComment>()
+            };
+
+            if (!string.IsNullOrWhiteSpace(taggedNpc))
+            {
+                post.Tagged.Add(taggedNpc);
+            }
+
+            lock (Posts)
+            {
+                Posts.Add(post);
+            }
+            TrimPosts();
+
+            var authorStats = GetOrCreateProfileStats(npcName, false);
+            authorStats.TotalPosts++;
+
+            if (StardewModdingAPI.Context.IsMainPlayer && StardewModdingAPI.Context.IsMultiplayer)
+            {
+                string saveFolder = GetActiveSaveFolderName();
+                string photoSharedDir = Path.Combine(ModEntry.SHelper.DirectoryPath, "userdata", saveFolder, "photo_shared");
+                foreach (var img in attachedImages)
+                {
+                    string absolutePath = Path.Combine(photoSharedDir, img);
+                    foreach (var farmer in Game1.getOnlineFarmers())
+                    {
+                        if (farmer.UniqueMultiplayerID != Game1.player.UniqueMultiplayerID)
+                        {
+                            TransferManager.QueueSend("Photo", img, absolutePath, farmer.UniqueMultiplayerID);
+                        }
+                    }
+                }
+
+                BroadcastPostUpdate(post, new List<string> { npcName });
+            }
+
+            Save();
+            return id;
+        }
+
         /// <summary>Adds a comment by an NPC on a post. Returns true on success.</summary>
         public static bool AddNpcComment(string postId, string npcName, string commentText)
         {
