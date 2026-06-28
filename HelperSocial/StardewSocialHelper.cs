@@ -52,6 +52,7 @@ namespace SmartphoneAppStardewSocial
             public List<List<string>> AttachmentTags { get; set; } = new();
             public string NpcCharacteristic { get; set; } = string.Empty;
             public string GeneratedText { get; set; } = string.Empty;
+            public List<string> GeneratedTags { get; set; } = new();
             public bool IsTextReady { get; set; }
             public bool IsPosted { get; set; }
         }
@@ -319,15 +320,16 @@ namespace SmartphoneAppStardewSocial
             {
                 await RunAiActionWithQueueAsync(async () =>
                 {
-                    Dictionary<string, string> generatedTexts = await GenerateNpcSocialPostTextsBatch(postsNeedingText);
+                    Dictionary<string, GeneratedPostResult> generatedPosts = await GenerateNpcSocialPostTextsBatch(postsNeedingText);
 
                     foreach (DailySocialPostPlan plan in postsNeedingText)
                     {
-                        string generatedText = generatedTexts.TryGetValue(plan.PlanId, out string? text)
-                            ? text
-                            : string.Empty;
+                        GeneratedPostResult generated = generatedPosts.TryGetValue(plan.PlanId, out var result)
+                            ? result
+                            : new GeneratedPostResult();
 
-                        plan.GeneratedText = NormalizeGeneratedSocialCommentText(plan.AuthorName, generatedText);
+                        plan.GeneratedText = NormalizeGeneratedSocialCommentText(plan.AuthorName, generated.Text);
+                        plan.GeneratedTags = generated.Tags;
                         plan.IsTextReady = true;
                     }
 
@@ -350,7 +352,7 @@ namespace SmartphoneAppStardewSocial
 
                 string postText = plan.IncludeText ? plan.GeneratedText : string.Empty;
 
-                string? postId = StardewConnectManager.AddNpcPostWithAttachments(plan.AuthorName, postText, plan.Attachments);
+                string? postId = StardewConnectManager.AddNpcPostWithAttachments(plan.AuthorName, postText, plan.Attachments, plan.GeneratedTags);
                 plan.IsPosted = true;
 
                 if (string.IsNullOrWhiteSpace(postId))
@@ -631,6 +633,9 @@ namespace SmartphoneAppStardewSocial
                     foreach (KeyValuePair<string, Dictionary<string, string>> postEntry in generatedCommentsByPost)
                     {
                         string postId = postEntry.Key;
+                        if (StardewConnectManager.GetPost(postId) == null)
+                            continue;
+
                         Dictionary<string, string> postComments = postEntry.Value;
                         if (string.IsNullOrWhiteSpace(postId) || postComments == null || postComments.Count == 0)
                             continue;
@@ -644,6 +649,8 @@ namespace SmartphoneAppStardewSocial
 
                             QueueDelayedSocialAction(() =>
                             {
+                                if (StardewConnectManager.GetPost(postId) == null)
+                                    return;
                                 StardewConnectManager.AddNpcComment(postId, commentAuthorName, generatedComment);
                             });
                         }

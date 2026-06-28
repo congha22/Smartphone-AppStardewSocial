@@ -487,9 +487,15 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
-        private static async Task<Dictionary<string, string>> GenerateNpcSocialPostTextsBatch(IReadOnlyList<DailySocialPostPlan> scheduledPosts)
+        public sealed class GeneratedPostResult
         {
-            var generatedPosts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            public string Text { get; set; } = string.Empty;
+            public List<string> Tags { get; set; } = new();
+        }
+
+        private static async Task<Dictionary<string, GeneratedPostResult>> GenerateNpcSocialPostTextsBatch(IReadOnlyList<DailySocialPostPlan> scheduledPosts)
+        {
+            var generatedPosts = new Dictionary<string, GeneratedPostResult>(StringComparer.OrdinalIgnoreCase);
             if (scheduledPosts == null || scheduledPosts.Count == 0 || IsMaxedLimit)
                 return generatedPosts;
 
@@ -537,8 +543,9 @@ namespace SmartphoneAppStardewSocial
                     - Match the personality and characteristic development stage of the NPC.
                     - If image tags are provided, then the post should be relevant to the photo content and the world context. The tags describing where, when, what and who can be seen in the photo. In most case, the photo is taken by the NPC when they are visiting others, hanging out or just doing something.
                     - Invent random topic such as daily life, something happened, something fun, something strange, some drama, some topic to debate,... Be creative and dynamics. Do not be repetitive!
+                    - You can tag people in your post, limited to 3. Only tag when it make sense. Put name in ""tag"", with comma seperated.
                     Return exactly one valid JSON object in this format:
-                    {""posts"": [{""id"": ""<id>"", ""text"": ""<generated post text>""}]}
+                    {""posts"": [{""id"": ""<id>"", ""text"": ""<generated post text>"", ""tag"": ""name1, name2""}]}
                     Every returned id must match an input id.";
 
                 developerMessage = AppendLanguageInstruction(developerMessage);
@@ -659,14 +666,14 @@ namespace SmartphoneAppStardewSocial
                         }
 
 
-                    // SMonitor.Log(jsonResponse.ToString(), LogLevel.Error);
-                    // SMonitor.Log("system-----", LogLevel.Error);
-                    // SMonitor.Log(system, LogLevel.Error);
-                    // SMonitor.Log("user-----", LogLevel.Error);
-                    // SMonitor.Log(user, LogLevel.Error);
-                    SMonitor.Log("response-----", LogLevel.Error);
-                    SMonitor.Log(jsonResponse, LogLevel.Error);
-                    SMonitor.Log("\n\n", LogLevel.Error);
+                        // SMonitor.Log(jsonResponse.ToString(), LogLevel.Error);
+                        // SMonitor.Log("system-----", LogLevel.Error);
+                        // SMonitor.Log(system, LogLevel.Error);
+                        // SMonitor.Log("user-----", LogLevel.Error);
+                        // SMonitor.Log(user, LogLevel.Error);
+                        SMonitor.Log("response-----", LogLevel.Error);
+                        SMonitor.Log(jsonResponse, LogLevel.Error);
+                        SMonitor.Log("\n\n", LogLevel.Error);
 
                         string responseText;
                         if (provider == AiProviderGemini)
@@ -689,7 +696,7 @@ namespace SmartphoneAppStardewSocial
                             .Distinct(StringComparer.OrdinalIgnoreCase)
                             .ToArray();
 
-                        if (TryParseGeneratedNpcSocialPosts(responseText, expectedPostIds, out Dictionary<string, string> parsedPosts))
+                        if (TryParseGeneratedNpcSocialPosts(responseText, expectedPostIds, out Dictionary<string, GeneratedPostResult> parsedPosts))
                             return parsedPosts;
 
                         SMonitor.Log($"Unable to parse generated social posts payload: {responseText}", LogLevel.Trace);
@@ -803,6 +810,7 @@ namespace SmartphoneAppStardewSocial
                 expectedCommentersByPost[postId] = normalizedCommenters;
 
                 string postAuthor = (post.AuthorName ?? string.Empty).Trim();
+                string taggedUser = (string.Join(";", (post.Tagged ?? new List<string>())));
                 string postText = (post.Text ?? string.Empty).Trim();
                 string postTag = string.Join(";", (post.Photo ?? new List<StardewConnectPhoto>())
                     .Select(p => p.Tag ?? string.Empty)
@@ -849,6 +857,7 @@ namespace SmartphoneAppStardewSocial
                 {
                     id = postId,
                     author = postAuthor,
+                    taggedUser = taggedUser,
                     postDescription = postText,
                     imageTag = postTag,
                     recentComments = latestComments,
@@ -1225,9 +1234,9 @@ namespace SmartphoneAppStardewSocial
 
         // ===== Parse generated post/comment output =====
 
-        private static bool TryParseGeneratedNpcSocialPosts(string responseText, IEnumerable<string> expectedPostIds, out Dictionary<string, string> posts)
+        private static bool TryParseGeneratedNpcSocialPosts(string responseText, IEnumerable<string> expectedPostIds, out Dictionary<string, GeneratedPostResult> posts)
         {
-            posts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            posts = new Dictionary<string, GeneratedPostResult>(StringComparer.OrdinalIgnoreCase);
 
             string[] normalizedPostIds = (expectedPostIds ?? Enumerable.Empty<string>())
                 .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -1253,7 +1262,7 @@ namespace SmartphoneAppStardewSocial
             }
         }
 
-        private static bool TryPopulateGeneratedNpcSocialPosts(JToken token, IReadOnlyCollection<string> expectedPostIds, Dictionary<string, string> posts)
+        private static bool TryPopulateGeneratedNpcSocialPosts(JToken token, IReadOnlyCollection<string> expectedPostIds, Dictionary<string, GeneratedPostResult> posts)
         {
             if (token == null)
                 return false;
@@ -1291,7 +1300,14 @@ namespace SmartphoneAppStardewSocial
 
                     string postText = ExtractGeneratedSocialPostText(postTextToken);
                     if (!string.IsNullOrWhiteSpace(postText))
-                        posts[postId] = postText;
+                    {
+                        var result = new GeneratedPostResult { Text = postText };
+                        if (TryGetJsonPropertyValue(obj, "tag", out JToken? tagToken) && tagToken != null)
+                        {
+                            result.Tags = ParseTags(tagToken);
+                        }
+                        posts[postId] = result;
+                    }
 
                     return posts.Count > 0;
                 }
@@ -1303,7 +1319,14 @@ namespace SmartphoneAppStardewSocial
 
                     string postText = ExtractGeneratedSocialPostText(postTextToken);
                     if (!string.IsNullOrWhiteSpace(postText))
-                        posts[expectedPostId] = postText;
+                    {
+                        var result = new GeneratedPostResult { Text = postText };
+                        if (TryGetJsonPropertyValue(obj, "tag", out JToken? tagToken) && tagToken != null)
+                        {
+                            result.Tags = ParseTags(tagToken);
+                        }
+                        posts[expectedPostId] = result;
+                    }
                 }
 
                 return posts.Count > 0;
@@ -1340,10 +1363,46 @@ namespace SmartphoneAppStardewSocial
 
                 string postText = ExtractGeneratedSocialPostText(postTextToken);
                 if (!string.IsNullOrWhiteSpace(postText))
-                    posts[postId] = postText;
+                {
+                    var result = new GeneratedPostResult { Text = postText };
+                    if (TryGetJsonPropertyValue(itemObject, "tag", out JToken? tagToken) && tagToken != null)
+                    {
+                        result.Tags = ParseTags(tagToken);
+                    }
+                    posts[postId] = result;
+                }
             }
 
             return posts.Count > 0;
+        }
+
+        private static List<string> ParseTags(JToken? tagToken)
+        {
+            var tags = new List<string>();
+            if (tagToken == null)
+                return tags;
+
+            if (tagToken.Type == JTokenType.Array)
+            {
+                foreach (var item in (JArray)tagToken)
+                {
+                    string trimmed = (item?.ToString() ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmed))
+                        tags.Add(trimmed);
+                }
+            }
+            else if (tagToken.Type == JTokenType.String || tagToken.Type == JTokenType.Raw)
+            {
+                string tagString = tagToken.ToString();
+                string[] parts = tagString.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (string part in parts)
+                {
+                    string trimmed = part.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmed))
+                        tags.Add(trimmed);
+                }
+            }
+            return tags;
         }
 
         private static string ExtractGeneratedSocialPostText(JToken? textToken)

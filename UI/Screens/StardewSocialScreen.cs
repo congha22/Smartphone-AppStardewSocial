@@ -684,7 +684,7 @@ namespace SmartphoneAppStardewSocial
             bool isViewingFeed = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && string.IsNullOrWhiteSpace(this.selectedSocialPostId);
             if (isViewingFeed)
             {
-                int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(50);
+                int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(52);
                 int createBtnX = this.xPositionOnScreen + this.phoneContentOffsetX + ScaleUiValue(70);
 
                 this.socialFeedOpenCreatePostBounds = new Rectangle(createBtnX, topButtonsY, ScaleUiValue(150), ScaleUiValue(45));
@@ -1797,6 +1797,16 @@ namespace SmartphoneAppStardewSocial
                 {
                     if (target.Bounds.Contains(x, y))
                     {
+                        if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
+                        {
+                            var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                            if (post != null)
+                            {
+                                StardewConnectManager.SetPlayerReadCommentCount(post, Game1.player?.Name ?? "Player", post.Comments.Count);
+                                StardewConnectManager.Save();
+                            }
+                        }
+
                         this.selectedSocialProfileActorName = target.ActorName;
                         this.selectedSocialProfileActorIsPlayer = target.ActorIsPlayer;
                         this.selectedSocialPostId = "";
@@ -2223,7 +2233,8 @@ namespace SmartphoneAppStardewSocial
                 else if (frameBounds.Contains(x, y))
                 {
                     bool isViewingFeed = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && string.IsNullOrWhiteSpace(this.selectedSocialPostId);
-                    bool clickingTopButton = isViewingFeed && (this.socialFeedOpenCreatePostBounds.Contains(x, y) || this.socialFeedOpenProfileBounds.Contains(x, y) || this.socialFeedOpenNotificationBounds.Contains(x, y));
+                    bool clickingTopButton = (isViewingFeed && (this.socialFeedOpenCreatePostBounds.Contains(x, y) || this.socialFeedOpenProfileBounds.Contains(x, y) || this.socialFeedOpenNotificationBounds.Contains(x, y)))
+                        || (!string.IsNullOrWhiteSpace(this.selectedSocialPostId) && !this.socialDetailDeletePostBounds.IsEmpty && this.socialDetailDeletePostBounds.Contains(x, y));
                     if (!clickingTopButton)
                     {
                         this.isDragging = true;

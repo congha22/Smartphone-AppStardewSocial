@@ -973,6 +973,13 @@ namespace SmartphoneAppStardewSocial
             }
             if (deleted)
             {
+                lock (LocalData)
+                {
+                    LocalData.ReadCommentCount.Remove(postId);
+                    LocalData.ActiveNotification.RemoveAll(n => string.Equals(n.PostId, postId, StringComparison.OrdinalIgnoreCase));
+                }
+                SaveLocalData();
+
                 RebuildProfileStatsFromPosts();
                 Save();
 
@@ -995,6 +1002,13 @@ namespace SmartphoneAppStardewSocial
             }
             if (deleted)
             {
+                lock (LocalData)
+                {
+                    LocalData.ReadCommentCount.Remove(postId);
+                    LocalData.ActiveNotification.RemoveAll(n => string.Equals(n.PostId, postId, StringComparison.OrdinalIgnoreCase));
+                }
+                SaveLocalData();
+
                 RebuildProfileStatsFromPosts();
                 Save();
 
@@ -1202,8 +1216,40 @@ namespace SmartphoneAppStardewSocial
 
         // ===== NPC social simulation helpers =====
 
+        private static string? ResolveTagName(string tag)
+        {
+            string clean = (tag ?? string.Empty).Trim();
+            if (clean.StartsWith("@"))
+                clean = clean.Substring(1).Trim();
+
+            if (string.IsNullOrWhiteSpace(clean))
+                return null;
+
+            // Try matching player
+            if (Game1.player != null && string.Equals(clean, Game1.player.Name, StringComparison.OrdinalIgnoreCase))
+                return Game1.player.Name;
+
+            foreach (var farmer in Game1.getOnlineFarmers())
+            {
+                if (string.Equals(clean, farmer.Name, StringComparison.OrdinalIgnoreCase))
+                    return farmer.Name;
+            }
+
+            // Try matching NPC internal name or display name
+            var allNpcs = Utility.getAllVillagers();
+            foreach (var npc in allNpcs)
+            {
+                if (npc != null && (string.Equals(clean, npc.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(clean, npc.displayName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return npc.Name;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Adds a new post by an NPC. Returns the post ID, or null if failed.</summary>
-        public static string? AddNpcPostWithAttachments(string npcName, string postText, IEnumerable<string>? attachedImageFiles)
+        public static string? AddNpcPostWithAttachments(string npcName, string postText, IEnumerable<string>? attachedImageFiles, IEnumerable<string>? taggedNpcs = null)
         {
             if (string.IsNullOrWhiteSpace(npcName))
                 return null;
@@ -1276,6 +1322,18 @@ namespace SmartphoneAppStardewSocial
                 LikedBy = new List<string>(),
                 Comments = new List<StardewConnectComment>()
             };
+
+            if (taggedNpcs != null)
+            {
+                foreach (string tag in taggedNpcs)
+                {
+                    string? resolved = ResolveTagName(tag);
+                    if (!string.IsNullOrWhiteSpace(resolved) && !post.Tagged.Contains(resolved, StringComparer.OrdinalIgnoreCase))
+                    {
+                        post.Tagged.Add(resolved);
+                    }
+                }
+            }
 
             lock (Posts)
             {
