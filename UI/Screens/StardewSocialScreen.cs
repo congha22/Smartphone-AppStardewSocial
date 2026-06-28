@@ -1845,7 +1845,7 @@ namespace SmartphoneAppStardewSocial
 
                 if (this.socialCreateSubmitBounds.Contains(x, y))
                 {
-                    if (!string.IsNullOrWhiteSpace(this.postTextBox.Text))
+                    if (!string.IsNullOrWhiteSpace(this.postTextBox.Text) || this.draftSelectedPhotos.Count > 0)
                     {
                         var attachmentFiles = this.draftSelectedPhotos.Select(p => p.FileName).ToList();
 
