@@ -54,7 +54,7 @@ namespace SmartphoneAppStardewSocial
         public bool ShowSocialImageTags { get; set; } = false;
         public bool ShowUnreadComment { get; set; } = true;
 
-        public string IgnoredNpc { get; set; } = "Leo, Krobus, Dwarf, Gunther, Birdie, Bouncer, MoonSBV, PanSBV, RaccoonSBV, Leximonster, Dianna, Torts";
+
 
 
 

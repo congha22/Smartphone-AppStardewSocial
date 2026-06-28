@@ -122,12 +122,7 @@ namespace SmartphoneAppStardewSocial
                 tooltip: () => "Configure post retention and photo limits."
             );
 
-            configMenu.AddPageLink(
-                mod: ModManifest,
-                pageId: "misc-settings",
-                text: () => "Miscellaneous",
-                tooltip: () => "Configure ignored NPCs."
-            );
+
             
             configMenu.AddPageLink(
                 mod: ModManifest,
@@ -209,16 +204,7 @@ namespace SmartphoneAppStardewSocial
                 max: 1000
             );
 
-            // Miscellaneous page
-            configMenu.AddPage(mod: ModManifest, pageId: "misc-settings", pageTitle: () => "Miscellaneous");
 
-            configMenu.AddTextOption(
-                mod: ModManifest,
-                name: () => "Ignored NPCs",
-                tooltip: () => "Comma-separated list of NPCs who cannot post or comment.",
-                getValue: () => Config.IgnoredNpc ?? string.Empty,
-                setValue: value => Config.IgnoredNpc = value ?? string.Empty
-            );
 
 
             configMenu.AddPage(mod: ModManifest, pageId: "advance-settings", pageTitle: () => "Advance - Custom API");

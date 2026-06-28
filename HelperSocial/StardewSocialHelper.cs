@@ -11,22 +11,27 @@ namespace SmartphoneAppStardewSocial
 {
     public partial class ModEntry
     {
-        public static List<string> socialNpcBlacklist = new();
+        public static List<NPC> CachedContactableNpcs = new();
 
-        public static void RefreshIgnoredNpcList()
+        public static void UpdateContactableNpcs(List<string> contactableNames)
         {
-            if (Config == null)
+            if (contactableNames != null)
             {
-                socialNpcBlacklist = new List<string>();
-                return;
+                var nameSet = new HashSet<string>(contactableNames, StringComparer.OrdinalIgnoreCase);
+                CachedContactableNpcs = Utility.getAllVillagers()
+                    .OfType<NPC>()
+                    .Where(npc => npc != null && nameSet.Contains(npc.Name))
+                    .ToList();
             }
+            else
+            {
+                CachedContactableNpcs = new List<NPC>();
+            }
+        }
 
-            socialNpcBlacklist = (Config.IgnoredNpc ?? string.Empty)
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(name => name.Trim())
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+        public static List<NPC> GetContactableNpcsList()
+        {
+            return CachedContactableNpcs;
         }
 
         private static int SocialActionMaxDelayMilliseconds = 10000;
@@ -196,13 +201,7 @@ namespace SmartphoneAppStardewSocial
 
         private static NPC? GetRandomWeightedNPC()
         {
-            List<NPC> candidates = Utility.getAllVillagers()
-                .OfType<NPC>()
-                .Where(npc => npc.CanSocialize
-                    && Game1.player.friendshipData.ContainsKey(npc.Name)
-                    && !socialNpcBlacklist.Contains(npc.Name, StringComparer.OrdinalIgnoreCase))
-                .ToList();
-
+            List<NPC> candidates = GetContactableNpcsList();
             if (candidates.Count == 0)
                 return null;
 
@@ -233,13 +232,7 @@ namespace SmartphoneAppStardewSocial
 
         private static NPC? GetRandomVillagerNpc()
         {
-            List<NPC> candidates = Utility.getAllVillagers()
-                .OfType<NPC>()
-                .Where(npc => npc.CanSocialize
-                    && Game1.player.friendshipData.ContainsKey(npc.Name)
-                    && !socialNpcBlacklist.Contains(npc.Name, StringComparer.OrdinalIgnoreCase))
-                .ToList();
-
+            List<NPC> candidates = GetContactableNpcsList();
             if (candidates.Count == 0)
                 return null;
 
@@ -689,11 +682,7 @@ namespace SmartphoneAppStardewSocial
             if (post == null)
                 return string.Empty;
 
-            List<NPC> candidates = Utility.getAllVillagers()
-                .OfType<NPC>()
-                .Where(npc => npc.CanSocialize
-                    && Game1.player.friendshipData.ContainsKey(npc.Name)
-                    && !socialNpcBlacklist.Contains(npc.Name, StringComparer.OrdinalIgnoreCase))
+            List<NPC> candidates = GetContactableNpcsList()
                 .Where(npc => IsEligibleNpcCommentAuthorForPost(post, npc))
                 .Where(npc => excludedNpcNames == null || !excludedNpcNames.Contains(npc.Name))
                 .ToList();
@@ -723,11 +712,7 @@ namespace SmartphoneAppStardewSocial
             if (post == null)
                 return string.Empty;
 
-            List<NPC> candidates = Utility.getAllVillagers()
-                .OfType<NPC>()
-                .Where(npc => npc.CanSocialize
-                    && Game1.player.friendshipData.ContainsKey(npc.Name)
-                    && !socialNpcBlacklist.Contains(npc.Name, StringComparer.OrdinalIgnoreCase))
+            List<NPC> candidates = GetContactableNpcsList()
                 .Where(npc => !string.Equals(npc.Name, post.AuthorName, StringComparison.OrdinalIgnoreCase))
                 .Where(npc => !excludeAlreadyLiked || !StardewConnectManager.IsPostLikedBy(post, npc.Name))
                 .ToList();

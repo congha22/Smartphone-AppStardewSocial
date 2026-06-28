@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -61,7 +62,6 @@ namespace SmartphoneAppStardewSocial
                 return;
             StardewConnectManager.Load();
             StardewConnectManager.EnforcePhotoSharedRetention();
-            RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
 
@@ -116,7 +116,6 @@ namespace SmartphoneAppStardewSocial
         {
             if (!modReady)
                 return;
-            RefreshIgnoredNpcList();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
             CleanPhotoTempFolder();
@@ -181,6 +180,8 @@ namespace SmartphoneAppStardewSocial
                 this.Monitor.Log("Smartphone API is unavailable; Stardew Social app was not registered.", LogLevel.Warn);
                 return;
             }
+
+            iSmartphoneApi.ContactableNpcsChanged += UpdateContactableNpcs;
 
             this.LoadAssets();
             this.RegisterStardewSocialApp();
@@ -254,6 +255,27 @@ namespace SmartphoneAppStardewSocial
                 this.Monitor.Log("Failed to register Stardew Social app.", LogLevel.Error);
                 return;
             }
+
+            // Register Contact Action Card for Stardew Social
+            List<IContactActionCardButton> buttons = new List<IContactActionCardButton>
+            {
+                new ContactActionCardButton
+                {
+                    Text = "Profile",
+                    BackgroundColor = Color.HotPink,
+                    TextColor = Color.White,
+                    OnClick = (npcName) =>
+                    {
+                        if (iSmartphoneApi == null) return;
+                        Game1.activeClickableMenu = new StardewSocialScreen(
+                            iSmartphoneApi,
+                            npcName,
+                            () => iSmartphoneApi.OpenPhoneHomeScreen()
+                        );
+                    }
+                }
+            };
+            iSmartphoneApi.RegisterContactActionCard(this.ModManifest.UniqueID, "Stardew Social", buttons);
 
             modReady = true;
         }

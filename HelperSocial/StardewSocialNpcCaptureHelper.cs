@@ -321,8 +321,7 @@ namespace SmartphoneAppStardewSocial
             if (additionalDummyNpcs.Count >= additionalNpcCount)
                 return additionalDummyNpcs;
 
-            List<string> randomCandidates = Utility.getAllVillagers()
-                .Where(npc => npc.CanSocialize && !npc.IsInvisible && Game1.player.friendshipData.ContainsKey(npc.Name) && !ModEntry.socialNpcBlacklist.Contains(npc.Name, StringComparer.OrdinalIgnoreCase))
+            List<string> randomCandidates = ModEntry.CachedContactableNpcs
                 .Select(npc => npc.Name)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Where(name => !selectedNpcNames.Contains(name))

@@ -242,6 +242,19 @@ namespace SmartphoneAppStardewSocial
             CalculateLayout();
         }
 
+        public StardewSocialScreen(ISmartPhoneApi api, string npcName, Action onBack)
+            : this(api, onBack)
+        {
+            this.selectedSocialProfileActorName = npcName;
+            this.selectedSocialProfileActorIsPlayer = false;
+            this.selectedSocialPostId = "";
+            this.socialProfileMenuOpen = true;
+            this.socialProfileDetailBackStack = false;
+            this.socialProfileScrollOffset = 0f;
+            this.socialProfileScrollTarget = 0f;
+            CalculateLayout();
+        }
+
         public void ClearCachesAndRecalculate()
         {
             this.socialCardHeightCache.Clear();
