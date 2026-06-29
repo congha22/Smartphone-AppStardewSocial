@@ -62,28 +62,28 @@ namespace SmartphoneAppStardewSocial
                 }
             );
 
-            configMenu.AddSectionTitle(mod: ModManifest, text: () => "Quick Setup");
+            configMenu.AddSectionTitle(mod: ModManifest, text: () => Helper.Translation.Get("config.quickSetup"));
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Language",
-                tooltip: () => "Enter your prefered language and alphabet. However English is the best supported.",
+                name: () => Helper.Translation.Get("config.language.name"),
+                tooltip: () => Helper.Translation.Get("config.language.tooltip"),
                 getValue: () => string.IsNullOrWhiteSpace(Config.Language) ? "English" : Config.Language,
                 setValue: value => Config.Language = string.IsNullOrWhiteSpace(value) ? "English" : value.Trim()
             );
 
             configMenu.AddBoolOption(
                 mod: ModManifest,
-                name: () => "Show Social Image Tags",
-                tooltip: () => "Shows saved image tag text above attached images in StardewSocial posts.",
+                name: () => Helper.Translation.Get("config.showSocialImageTags.name"),
+                tooltip: () => Helper.Translation.Get("config.showSocialImageTags.tooltip"),
                 getValue: () => Config.ShowSocialImageTags,
                 setValue: value => Config.ShowSocialImageTags = value
             );
 
             configMenu.AddBoolOption(
                 mod: ModManifest,
-                name: () => "Show Unread Comment",
-                tooltip: () => "Shows unread comment count on posts.",
+                name: () => Helper.Translation.Get("config.showUnreadComment.name"),
+                tooltip: () => Helper.Translation.Get("config.showUnreadComment.tooltip"),
                 getValue: () => Config.ShowUnreadComment,
                 setValue: value => Config.ShowUnreadComment = value
             );
@@ -91,45 +91,43 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "ai-settings",
-                text: () => "AI Settings",
-                tooltip: () => "API key, model choice, and limits setting."
+                text: () => Helper.Translation.Get("config.aiSettings.name"),
+                tooltip: () => Helper.Translation.Get("config.aiSettings.tooltip")
             );
 
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "storage-limits",
-                text: () => "Storage and Limits",
-                tooltip: () => "Storage settings."
+                text: () => Helper.Translation.Get("config.storageLimits.name"),
+                tooltip: () => Helper.Translation.Get("config.storageLimits.tooltip")
             );
-
-
 
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "advance-settings",
-                text: () => "Advance - Custom API",
-                tooltip: () => "Call to your own API endpoint. Check out Forum for instruction."
+                text: () => Helper.Translation.Get("config.advanceSettings.name"),
+                tooltip: () => Helper.Translation.Get("config.advanceSettings.tooltip")
             );
 
             // AI Settings page
-            configMenu.AddPage(mod: ModManifest, pageId: "ai-settings", pageTitle: () => "AI Settings");
+            configMenu.AddPage(mod: ModManifest, pageId: "ai-settings", pageTitle: () => Helper.Translation.Get("config.aiSettings.name"));
             configMenu.AddParagraph(
                 mod: ModManifest,
-                text: () => "These settings are only effective when an API key is provided. You can use your own OpenAI or Gemini key. When using custom API, key and model options here have no effect."
+                text: () => Helper.Translation.Get("config.aiSettings.description")
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Key",
-                tooltip: () => "Use your own OpenAI or Gemini key to remove shared usage limits.\nOpenAI key: https://platform.openai.com/account/api-keys\nGemini key: https://aistudio.google.com/app/apikey\nRestart the game after changing this value.",
+                name: () => Helper.Translation.Get("config.key.name"),
+                tooltip: () => Helper.Translation.Get("config.key.tooltip"),
                 getValue: () => Config.Key,
                 setValue: value => Config.Key = value
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Model",
-                tooltip: () => "Chooses the model.\nOf course if you using OpenAI key, you should choose OpenAI model and vice versa for Gemini key.",
+                name: () => Helper.Translation.Get("config.model.name"),
+                tooltip: () => Helper.Translation.Get("config.model.tooltip"),
                 getValue: () => EnsureAllowedValue(Config.Model, ModConfig.OpenAIModel_54mini, aiModelValues),
                 setValue: value => Config.Model = value,
                 allowedValues: aiModelValues
@@ -137,8 +135,8 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "StardewSocial activity",
-                tooltip: () => "Controls how often StardewSocial posts and engagement are generated.",
+                name: () => Helper.Translation.Get("config.activity.name"),
+                tooltip: () => Helper.Translation.Get("config.activity.tooltip"),
                 getValue: () => EnsureAllowedValue(Config.PostPerDay, ModConfig.PostPerDayLow, postPerDayValues),
                 setValue: value => Config.PostPerDay = value,
                 allowedValues: postPerDayValues
@@ -146,8 +144,8 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "NPC characteristic detail",
-                tooltip: () => "NPC characteristic give the AI a background for each NPC during the chat and the post generation.\nHigher detail improves quality but uses more tokens per NPC.",
+                name: () => Helper.Translation.Get("config.characteristic.name"),
+                tooltip: () => Helper.Translation.Get("config.characteristic.tooltip"),
                 getValue: () => EnsureAllowedValue(Config.CharacteristicMode, ModConfig.CharacteristicModeShort, characteristicValues),
                 setValue: value => Config.CharacteristicMode = value,
                 allowedValues: characteristicValues
@@ -155,19 +153,19 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddBoolOption(
                 mod: ModManifest,
-                name: () => "High quality comment",
-                tooltip: () => "If enabled, AI will be provided with the minimal characteristic detail for each NPC.\nThis may improve the quality of comments but will use more tokens.",
+                name: () => Helper.Translation.Get("config.betterQualityComment.name"),
+                tooltip: () => Helper.Translation.Get("config.betterQualityComment.tooltip"),
                 getValue: () => Config.BetterQualityComment,
                 setValue: value => Config.BetterQualityComment = value
             );
 
             // Storage and Limits page
-            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => "Storage and Limits");
+            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => Helper.Translation.Get("config.storageLimits.name"));
 
             configMenu.AddNumberOption(
                 mod: ModManifest,
-                name: () => "StardewSocial posts to keep",
-                tooltip: () => "Older posts are removed first when this limit is exceeded.",
+                name: () => Helper.Translation.Get("config.maxPosts.name"),
+                tooltip: () => Helper.Translation.Get("config.maxPosts.tooltip"),
                 getValue: () => Config.MaxStardewConnectPosts,
                 setValue: value => Config.MaxStardewConnectPosts = Math.Clamp(value, 10, 1000),
                 min: 10,
@@ -176,75 +174,72 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddNumberOption(
                 mod: ModManifest,
-                name: () => "Player photos to keep",
-                tooltip: () => "Older player photos are deleted first.",
+                name: () => Helper.Translation.Get("config.maxPhotos.name"),
+                tooltip: () => Helper.Translation.Get("config.maxPhotos.tooltip"),
                 getValue: () => Config.MaxPhoto,
                 setValue: value => Config.MaxPhoto = Math.Clamp(value, 10, 1000),
                 min: 10,
                 max: 1000
             );
 
-
-
-
-            configMenu.AddPage(mod: ModManifest, pageId: "advance-settings", pageTitle: () => "Advance - Custom API");
+            configMenu.AddPage(mod: ModManifest, pageId: "advance-settings", pageTitle: () => Helper.Translation.Get("config.advanceSettings.name"));
             configMenu.AddParagraph(
                 mod: ModManifest,
-                text: () => "When using this advance setting, key and model selection on regular AI setting will be override. See mod page for instruction how to use these settings."
+                text: () => Helper.Translation.Get("config.advanceSettings.description")
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Endpoint",
-                tooltip: () => "URL endpoint for a custom API (leave empty to use default providers).",
+                name: () => Helper.Translation.Get("config.customEndpoint.name"),
+                tooltip: () => Helper.Translation.Get("config.customEndpoint.tooltip"),
                 getValue: () => Config.CustomApiEndpoint,
                 setValue: value => Config.CustomApiEndpoint = (value ?? string.Empty).Trim()
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Key",
-                tooltip: () => "Key for your custom API endpoint.",
+                name: () => Helper.Translation.Get("config.customKey.name"),
+                tooltip: () => Helper.Translation.Get("config.customKey.tooltip"),
                 getValue: () => Config.CustomApiKey,
                 setValue: value => Config.CustomApiKey = value
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Key Header",
-                tooltip: () => "HTTP Header name for the API Key.",
+                name: () => Helper.Translation.Get("config.customKeyHeader.name"),
+                tooltip: () => Helper.Translation.Get("config.customKeyHeader.tooltip"),
                 getValue: () => Config.CustomApiKeyHeader,
                 setValue: value => Config.CustomApiKeyHeader = (value ?? "Authorization").Trim()
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Key Prefix",
-                tooltip: () => "Prefix for the key (e.g. Bearer).",
+                name: () => Helper.Translation.Get("config.customKeyPrefix.name"),
+                tooltip: () => Helper.Translation.Get("config.customKeyPrefix.tooltip"),
                 getValue: () => Config.CustomApiKeyPrefix,
                 setValue: value => Config.CustomApiKeyPrefix = (value ?? "Bearer").Trim()
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Payload Template",
-                tooltip: () => "JSON payload template.",
+                name: () => Helper.Translation.Get("config.customPayload.name"),
+                tooltip: () => Helper.Translation.Get("config.customPayload.tooltip"),
                 getValue: () => Config.CustomApiPayloadTemplate,
                 setValue: value => Config.CustomApiPayloadTemplate = value ?? string.Empty
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Custom API Response JSON Path",
-                tooltip: () => "JSON path to extract response text.",
+                name: () => Helper.Translation.Get("config.customResponsePath.name"),
+                tooltip: () => Helper.Translation.Get("config.customResponsePath.tooltip"),
                 getValue: () => Config.CustomApiResponseTextPath,
                 setValue: value => Config.CustomApiResponseTextPath = value ?? string.Empty
             );
 
             configMenu.AddNumberOption(
                 mod: ModManifest,
-                name: () => "Custom API Timeout Seconds",
-                tooltip: () => "Request timeout in seconds.",
+                name: () => Helper.Translation.Get("config.customTimeout.name"),
+                tooltip: () => Helper.Translation.Get("config.customTimeout.tooltip"),
                 getValue: () => Config.CustomApiTimeoutSeconds,
                 setValue: value => Config.CustomApiTimeoutSeconds = Math.Clamp(value, 5, 300),
                 min: 5,

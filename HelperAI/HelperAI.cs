@@ -704,23 +704,23 @@ namespace SmartphoneAppStardewSocial
                     }
 
                     int statusCode = (int)httpResponse.StatusCode;
-                    string errorMessage = "Check for mod update";
+                    string errorMessage = SHelper.Translation.Get("ai.error.fallback");
                     switch (statusCode)
                     {
                         case 400:
-                            errorMessage = "Bad request sent to AI provider.";
+                            errorMessage = SHelper.Translation.Get("ai.error.badRequest");
                             break;
                         case 403:
-                            errorMessage = "Country, region, or territory not supported.";
+                            errorMessage = SHelper.Translation.Get("ai.error.unsupportedRegion");
                             break;
                         case 429:
-                            errorMessage = "Please try again in a few minutes. If not work, then total AI usage for all players has passed the limit set by OpenAI. This will be reset the next day in timezone UTC+0";
+                            errorMessage = SHelper.Translation.Get("ai.error.limitExceeded");
                             break;
                         case 500:
-                            errorMessage = "Server Error: The server had an issue while processing your request. Please try again.";
+                            errorMessage = SHelper.Translation.Get("ai.error.serverError");
                             break;
                         case 503:
-                            errorMessage = "Server Overload: The server is experiencing high traffic. Please try again later.";
+                            errorMessage = SHelper.Translation.Get("ai.error.serverOverload");
                             break;
                     }
 
@@ -1048,23 +1048,23 @@ namespace SmartphoneAppStardewSocial
                     }
 
                     int statusCode = (int)httpResponse.StatusCode;
-                    string errorMessage = "Check for mod update";
+                    string errorMessage = SHelper.Translation.Get("ai.error.fallback");
                     switch (statusCode)
                     {
                         case 400:
-                            errorMessage = "Bad request sent to AI provider.";
+                            errorMessage = SHelper.Translation.Get("ai.error.badRequest");
                             break;
                         case 403:
-                            errorMessage = "Country, region, or territory not supported.";
+                            errorMessage = SHelper.Translation.Get("ai.error.unsupportedRegion");
                             break;
                         case 429:
-                            errorMessage = "Please try again in a few minutes. If not work, then total AI usage for all players has passed the limit set by OpenAI. This will be reset the next day in timezone UTC+0";
+                            errorMessage = SHelper.Translation.Get("ai.error.limitExceeded");
                             break;
                         case 500:
-                            errorMessage = "Server Error: The server had an issue while processing your request. Please try again.";
+                            errorMessage = SHelper.Translation.Get("ai.error.serverError");
                             break;
                         case 503:
-                            errorMessage = "Server Overload: The server is experiencing high traffic. Please try again later.";
+                            errorMessage = SHelper.Translation.Get("ai.error.serverOverload");
                             break;
                     }
 

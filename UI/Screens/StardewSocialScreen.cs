@@ -87,7 +87,7 @@ namespace SmartphoneAppStardewSocial
 
             string capSeason = string.IsNullOrEmpty(season) ? "" : char.ToUpper(season[0]) + season.Substring(1).ToLower();
 
-            return $"at {timeString} {capSeason} {day}";
+            return ModEntry.SHelper.Translation.Get("time.format", new { time = timeString, season = capSeason, day = day.ToString() });
         }
 
         private Texture2D? GetPostPhotoTexture(StardewConnectPost post, StardewConnectPhoto photo)
@@ -697,7 +697,7 @@ namespace SmartphoneAppStardewSocial
                     this.socialFeedOpenCreatePostBounds.X, this.socialFeedOpenCreatePostBounds.Y,
                     this.socialFeedOpenCreatePostBounds.Width, this.socialFeedOpenCreatePostBounds.Height,
                     Color.LightGreen, 1f, false);
-                DrawPhoneText(b, Game1.smallFont, "Create ...", new Vector2(this.socialFeedOpenCreatePostBounds.X + ScaleUiValue(14), this.socialFeedOpenCreatePostBounds.Y + ScaleUiValue(8)), Color.Black);
+                DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("feed.createPost"), new Vector2(this.socialFeedOpenCreatePostBounds.X + ScaleUiValue(14), this.socialFeedOpenCreatePostBounds.Y + ScaleUiValue(8)), Color.Black);
 
                 // Draw Profile button
                 DrawSocialActorIcon(b, Game1.player?.Name ?? "Player", true, this.socialFeedOpenProfileBounds);
@@ -740,7 +740,7 @@ namespace SmartphoneAppStardewSocial
 
             if (!string.IsNullOrEmpty(this.hoverText))
             {
-                drawHoverText(b, this.hoverText, Game1.smallFont);
+                DrawHoverTextCard(b, this.hoverText, Game1.getMouseX(), Game1.getMouseY());
                 this.hoverText = "";
             }
 
@@ -776,7 +776,7 @@ namespace SmartphoneAppStardewSocial
 
             if (posts.Count == 0)
             {
-                DrawPhoneText(b, Game1.smallFont, "No posts yet.", new Vector2(clipRect.X + ScaleUiValue(30), currentY + ScaleUiValue(20)), Color.Black);
+                DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("feed.noPosts"), new Vector2(clipRect.X + ScaleUiValue(30), currentY + ScaleUiValue(20)), Color.Black);
             }
             else
             {
@@ -854,15 +854,15 @@ namespace SmartphoneAppStardewSocial
             {
                 if (post.Tagged.Count == 1)
                 {
-                    authorDisplayText += " with " + GetCleanName(post.Tagged[0]);
+                    authorDisplayText += " " + ModEntry.SHelper.Translation.Get("feed.with", new { names = GetCleanName(post.Tagged[0]) });
                 }
                 else if (post.Tagged.Count == 2)
                 {
-                    authorDisplayText += " with " + GetCleanName(post.Tagged[0]) + ", " + GetCleanName(post.Tagged[1]);
+                    authorDisplayText += " " + ModEntry.SHelper.Translation.Get("feed.with", new { names = GetCleanName(post.Tagged[0]) + ", " + GetCleanName(post.Tagged[1]) });
                 }
                 else
                 {
-                    authorDisplayText += " with others";
+                    authorDisplayText += " " + ModEntry.SHelper.Translation.Get("feed.withOthers");
                 }
             }
             string timeString = FormatTime(post.CreatedTime.Season, post.CreatedTime.Day, post.CreatedTime.TimeOfDay);
@@ -1165,7 +1165,7 @@ namespace SmartphoneAppStardewSocial
             var activeNotifications = StardewConnectManager.GetActiveSocialNotifications();
             if (activeNotifications.Count == 0)
             {
-                DrawPhoneText(b, Game1.smallFont, "No new notifications.", new Vector2(cardX, cursorY + ScaleUiValue(15)), Color.Black, 0.9f);
+                DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("notifications.none"), new Vector2(cardX, cursorY + ScaleUiValue(15)), Color.Black, 0.9f);
             }
             else
             {
@@ -1256,9 +1256,9 @@ namespace SmartphoneAppStardewSocial
 
             string[] infoLines =
             {
-                "Name: " + cleanName,
-                "Age: " + ageLabel,
-                "Birthday: " + birthdayLabel
+                ModEntry.SHelper.Translation.Get("profile.nameLabel", new { name = cleanName }),
+                ModEntry.SHelper.Translation.Get("profile.ageLabel", new { age = ageLabel }),
+                ModEntry.SHelper.Translation.Get("profile.birthdayLabel", new { birthday = birthdayLabel })
             };
 
             int infoLineHeight = Math.Max(ScaleUiValue(24), infoBounds.Height / 3);
@@ -1285,12 +1285,12 @@ namespace SmartphoneAppStardewSocial
             int statsTopY = statsBounds.Y + ScaleUiValue(16);
             int statsLineHeight = Math.Max(ScaleUiValue(22), GetPhoneScaledLineHeight(Game1.smallFont, 0.85f));
 
-            DrawPhoneText(b, Game1.smallFont, "Total posts: " + stats.TotalPosts, new Vector2(statsTextX, statsTopY), Color.Black, 0.9f);
+            DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.totalPosts", new { count = stats.TotalPosts.ToString() }), new Vector2(statsTextX, statsTopY), Color.Black, 0.9f);
 
             int metricIconX = statsTextX + ScaleUiValue(82);
 
             int receivedLineY = statsTopY + statsLineHeight;
-            DrawPhoneText(b, Game1.smallFont, "Received", new Vector2(statsTextX, receivedLineY), Color.Black, 0.9f);
+            DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.received"), new Vector2(statsTextX, receivedLineY), Color.Black, 0.9f);
 
             Rectangle receivedHeartBounds = new Rectangle(
                 metricIconX + ScaleUiValue(30),
@@ -1309,7 +1309,7 @@ namespace SmartphoneAppStardewSocial
             DrawPhoneText(b, Game1.smallFont, stats.TotalCommentsReceived.ToString(), new Vector2(receivedCommentBounds.Right + ScaleUiValue(6), receivedLineY), Color.Black, 0.9f);
 
             int sentLineY = receivedLineY + statsLineHeight;
-            DrawPhoneText(b, Game1.smallFont, "Sent", new Vector2(statsTextX, sentLineY), Color.Black, 0.9f);
+            DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.sent"), new Vector2(statsTextX, sentLineY), Color.Black, 0.9f);
 
             Rectangle sentHeartBounds = new Rectangle(
                 metricIconX + ScaleUiValue(30),
@@ -1345,14 +1345,14 @@ namespace SmartphoneAppStardewSocial
             var topFrom = StardewConnectManager.GetTopInteractionsFrom(this.selectedSocialProfileActorName, this.selectedSocialProfileActorIsPlayer, 3);
             var topTo = StardewConnectManager.GetTopInteractionsTo(this.selectedSocialProfileActorName, this.selectedSocialProfileActorIsPlayer, 3);
 
-            DrawSocialInteractionColumn(b, fromBounds, "Top Interact From", topFrom);
-            DrawSocialInteractionColumn(b, toBounds, "Top Interact To", topTo);
+            DrawSocialInteractionColumn(b, fromBounds, ModEntry.SHelper.Translation.Get("profile.topInteractFrom"), topFrom);
+            DrawSocialInteractionColumn(b, toBounds, ModEntry.SHelper.Translation.Get("profile.topInteractTo"), topTo);
 
             cursorY += interBounds.Height + ScaleUiValue(12);
 
             // Posts header
             Rectangle postsHeaderBounds = new Rectangle(cardX, cursorY, cardWidth, ScaleUiValue(46));
-            DrawPhoneText(b, Game1.smallFont, "Posts (Newest to Oldest)", new Vector2(postsHeaderBounds.X + ScaleUiValue(14), postsHeaderBounds.Y + ScaleUiValue(9)), Color.Black);
+            DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.postsHeader"), new Vector2(postsHeaderBounds.X + ScaleUiValue(14), postsHeaderBounds.Y + ScaleUiValue(9)), Color.Black);
 
             cursorY += postsHeaderBounds.Height + ScaleUiValue(14);
 
@@ -1362,7 +1362,7 @@ namespace SmartphoneAppStardewSocial
 
             if (sortedPosts.Count == 0)
             {
-                DrawPhoneText(b, Game1.smallFont, "No post yet.", new Vector2(cardX + ScaleUiValue(14), cursorY + ScaleUiValue(10)), Color.Black);
+                DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.noPosts"), new Vector2(cardX + ScaleUiValue(14), cursorY + ScaleUiValue(10)), Color.Black);
             }
             else
             {
@@ -1424,7 +1424,7 @@ namespace SmartphoneAppStardewSocial
 
             if (interactions == null || interactions.Count == 0)
             {
-                DrawPhoneText(b, Game1.smallFont, "No data", new Vector2(bounds.X, y), Color.DimGray, 0.9f);
+                DrawPhoneText(b, Game1.smallFont, ModEntry.SHelper.Translation.Get("profile.noData"), new Vector2(bounds.X, y), Color.DimGray, 0.9f);
                 return;
             }
 
@@ -1454,14 +1454,14 @@ namespace SmartphoneAppStardewSocial
                         return fAge;
                     }
                 }
-                return "Unknown";
+                return ModEntry.SHelper.Translation.Get("profile.unknown");
             }
 
             NPC? npc = Game1.getCharacterFromName(actorName);
             if (npc == null)
-                return "Unknown";
+                return ModEntry.SHelper.Translation.Get("profile.unknown");
 
-            return npc.Age == 0 ? "Adult" : npc.Age == 1 ? "Teens" : npc.Age == 2 ? "Child" : "Adult";
+            return npc.Age == 0 ? ModEntry.SHelper.Translation.Get("profile.adult") : npc.Age == 1 ? ModEntry.SHelper.Translation.Get("profile.teens") : npc.Age == 2 ? ModEntry.SHelper.Translation.Get("profile.child") : ModEntry.SHelper.Translation.Get("profile.adult");
         }
 
         private string GetSocialProfileBirthdayLabel(string actorName, bool actorIsPlayer)
@@ -1484,12 +1484,12 @@ namespace SmartphoneAppStardewSocial
                         }
                     }
                 }
-                return "Unknown";
+                return ModEntry.SHelper.Translation.Get("profile.unknown");
             }
 
             NPC? npc = Game1.getCharacterFromName(actorName, mustBeVillager: false);
             if (npc == null || npc.Birthday_Day <= 0 || string.IsNullOrWhiteSpace(npc.Birthday_Season))
-                return "Unknown";
+                return ModEntry.SHelper.Translation.Get("profile.unknown");
 
             string season = npc.Birthday_Season.Trim();
             string seasonLabel = char.ToUpperInvariant(season[0]) + season.Substring(1).ToLowerInvariant();
@@ -1510,7 +1510,7 @@ namespace SmartphoneAppStardewSocial
 
             if (this.socialNotificationMenuOpen && !this.socialNotificationClearAllBounds.IsEmpty && this.socialNotificationClearAllBounds.Contains(x, y))
             {
-                this.hoverText = "Mark All Read";
+                this.hoverText = ModEntry.SHelper.Translation.Get("notifications.markAllRead");
             }
         }
 
@@ -2801,6 +2801,51 @@ namespace SmartphoneAppStardewSocial
             for (int i = 0; i < likerNames.Count; i++)
             {
                 DrawPhoneText(b, Game1.smallFont, likerNames[i], new Vector2(x + paddingX, y + paddingY + (i * lineHeight)), Game1.textColor, textScale);
+            }
+        }
+
+        private void DrawHoverTextCard(SpriteBatch b, string text, int mouseX, int mouseY)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            int wrapWidth = GetPhoneScaledWrapWidth(ScaleUiValue(240), SocialHeaderMetaScale);
+            string parsedText = Game1.parseText(text, Game1.smallFont, wrapWidth);
+
+            string[] lines = parsedText.Split('\n');
+            int lineHeight = GetPhoneScaledLineHeight(Game1.smallFont, SocialHeaderMetaScale, extraPadding: 2);
+            int paddingX = ScaleUiValue(12);
+            int paddingY = ScaleUiValue(10);
+
+            int maxTextWidth = 0;
+            foreach (string line in lines)
+            {
+                maxTextWidth = Math.Max(maxTextWidth, (int)Math.Ceiling(MeasurePhoneText(Game1.smallFont, line, SocialHeaderMetaScale).X));
+            }
+
+            int boxWidth = maxTextWidth + paddingX * 2;
+            int boxHeight = paddingY * 2 + (lines.Length * lineHeight);
+
+            int x = mouseX + ScaleUiValue(28);
+            int y = mouseY + ScaleUiValue(15);
+            int maxX = Game1.uiViewport.Width - boxWidth - ScaleUiValue(15);
+            int maxY = Game1.uiViewport.Height - boxHeight - ScaleUiValue(15);
+            x = Math.Clamp(x, ScaleUiValue(15), maxX);
+            y = Math.Clamp(y, ScaleUiValue(15), maxY);
+
+            UI.CardDrawing.DrawCard(
+                b,
+                x,
+                y,
+                boxWidth,
+                boxHeight,
+                Color.White,
+                1f,
+                false);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                DrawPhoneText(b, Game1.smallFont, lines[i], new Vector2(x + paddingX, y + paddingY + (i * lineHeight)), Color.Black, SocialHeaderMetaScale);
             }
         }
         private int GetAdaptivePhotoHeight(StardewConnectPost post, int maxPhotoW)

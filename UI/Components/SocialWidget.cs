@@ -111,7 +111,7 @@ namespace SmartphoneAppStardewSocial
 
             if (latestPost == null)
             {
-                string text = "No posts yet.";
+                string text = ModEntry.SHelper.Translation.Get("widget.noPosts");
                 Vector2 textSize = MeasurePhoneText(Game1.smallFont, text, 0.9f, scale);
                 DrawPhoneText(b, Game1.smallFont, text, new Vector2(rect.X + (rect.Width - textSize.X) / 2f, rect.Y + (rect.Height - textSize.Y) / 2f), Color.Black * 0.8f, 0.9f, scale);
                 return;

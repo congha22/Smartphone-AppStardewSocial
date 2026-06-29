@@ -556,7 +556,7 @@ namespace SmartphoneAppStardewSocial
                 if (isLatestTag)
                 {
                     string cleanAuthorName = Game1.getCharacterFromName(latestComment.AuthorName)?.displayName ?? latestComment.AuthorName;
-                    text = $"{cleanAuthorName} has tagged you in a comment.";
+                    text = ModEntry.SHelper.Translation.Get("notification.tagged", new { author = cleanAuthorName });
                 }
                 else
                 {
@@ -572,15 +572,15 @@ namespace SmartphoneAppStardewSocial
 
                     if (uniqueAuthors.Count == 1)
                     {
-                        text = $"{uniqueAuthors[0]} has commented on your post.";
+                        text = ModEntry.SHelper.Translation.Get("notification.commentedSingle", new { author = uniqueAuthors[0] });
                     }
                     else if (uniqueAuthors.Count == 2)
                     {
-                        text = $"{uniqueAuthors[0]} and {uniqueAuthors[1]} has commented on your post.";
+                        text = ModEntry.SHelper.Translation.Get("notification.commentedDouble", new { author1 = uniqueAuthors[0], author2 = uniqueAuthors[1] });
                     }
                     else
                     {
-                        text = $"{uniqueAuthors[0]}, {uniqueAuthors[1]} and others has commented on your post.";
+                        text = ModEntry.SHelper.Translation.Get("notification.commentedMultiple", new { author1 = uniqueAuthors[0], author2 = uniqueAuthors[1] });
                     }
                 }
 
@@ -593,7 +593,7 @@ namespace SmartphoneAppStardewSocial
             {
                 var latestTagComment = tagComments.Last();
                 string cleanAuthorName = Game1.getCharacterFromName(latestTagComment.AuthorName)?.displayName ?? latestTagComment.AuthorName;
-                string text = $"{cleanAuthorName} has tagged you in a comment.";
+                string text = ModEntry.SHelper.Translation.Get("notification.tagged", new { author = cleanAuthorName });
 
                 int readCount = GetPlayerReadCommentCount(post, playerName);
                 bool isUnread = post.Comments.IndexOf(latestTagComment) >= readCount;

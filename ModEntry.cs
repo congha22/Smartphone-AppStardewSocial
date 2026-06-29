@@ -230,7 +230,7 @@ namespace SmartphoneAppStardewSocial
             bool appRegistered = iSmartphoneApi.RegisterPhoneApp(
                 ownerModId: this.ModManifest.UniqueID,
                 appId: AppId,
-                displayName: "Stardew Social",
+                displayName: SHelper.Translation.Get("app.name"),
                 onClick: this.OpenStardewSocialApp,
                 closePhoneOnLaunch: true,
                 sourceRect: null,
@@ -261,7 +261,7 @@ namespace SmartphoneAppStardewSocial
             {
                 new ContactActionCardButton
                 {
-                    Text = "Profile",
+                    Text = SHelper.Translation.Get("app.profileButton"),
                     BackgroundColor = Color.HotPink,
                     TextColor = Color.White,
                     OnClick = (npcName) =>
@@ -275,7 +275,7 @@ namespace SmartphoneAppStardewSocial
                     }
                 }
             };
-            iSmartphoneApi.RegisterContactActionCard(this.ModManifest.UniqueID, "Stardew Social", buttons);
+            iSmartphoneApi.RegisterContactActionCard(this.ModManifest.UniqueID, SHelper.Translation.Get("app.name"), buttons);
 
             modReady = true;
         }

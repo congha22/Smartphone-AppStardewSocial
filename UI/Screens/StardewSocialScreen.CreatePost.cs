@@ -34,18 +34,18 @@ namespace SmartphoneAppStardewSocial
             // Draw currently tagged people left-aligned next to the action buttons
             if (this.draftTagged.Count > 0)
             {
-                string draftTagText = "with ";
+                string draftTagText = "";
                 if (this.draftTagged.Count == 1)
                 {
-                    draftTagText += GetCleanName(this.draftTagged[0]);
+                    draftTagText = ModEntry.SHelper.Translation.Get("feed.with", new { names = GetCleanName(this.draftTagged[0]) });
                 }
                 else if (this.draftTagged.Count == 2)
                 {
-                    draftTagText += GetCleanName(this.draftTagged[0]) + ", " + GetCleanName(this.draftTagged[1]);
+                    draftTagText = ModEntry.SHelper.Translation.Get("feed.with", new { names = GetCleanName(this.draftTagged[0]) + ", " + GetCleanName(this.draftTagged[1]) });
                 }
                 else
                 {
-                    draftTagText += GetCleanName(this.draftTagged[0]) + ", " + GetCleanName(this.draftTagged[1]) + " and others";
+                    draftTagText = ModEntry.SHelper.Translation.Get("feed.with", new { names = GetCleanName(this.draftTagged[0]) + ", " + GetCleanName(this.draftTagged[1]) + " " + ModEntry.SHelper.Translation.Get("feed.andOthers") });
                 }
 
                 // Truncate if it exceeds available horizontal space
@@ -173,12 +173,13 @@ namespace SmartphoneAppStardewSocial
                 this.socialCreateCancelBounds.X, this.socialCreateCancelBounds.Y,
                 this.socialCreateCancelBounds.Width, this.socialCreateCancelBounds.Height,
                 Color.OrangeRed, 1f, false);
-            Vector2 cancelSize = MeasurePhoneText(Game1.smallFont, "Cancel");
+            string cancelText = ModEntry.SHelper.Translation.Get("createPost.cancel");
+            Vector2 cancelSize = MeasurePhoneText(Game1.smallFont, cancelText);
             Vector2 cancelPos = new Vector2(
                 this.socialCreateCancelBounds.X + (this.socialCreateCancelBounds.Width - cancelSize.X) / 2f,
                 this.socialCreateCancelBounds.Y + (this.socialCreateCancelBounds.Height - cancelSize.Y) / 2f
             );
-            DrawPhoneText(b, Game1.smallFont, "Cancel", cancelPos, Color.Black);
+            DrawPhoneText(b, Game1.smallFont, cancelText, cancelPos, Color.Black);
 
             // Draw Publish
             UI.CardDrawing.DrawCard(
@@ -186,12 +187,13 @@ namespace SmartphoneAppStardewSocial
                 this.socialCreateSubmitBounds.X, this.socialCreateSubmitBounds.Y,
                 this.socialCreateSubmitBounds.Width, this.socialCreateSubmitBounds.Height,
                 Color.LightGreen, 1f, false);
-            Vector2 publishSize = MeasurePhoneText(Game1.smallFont, "Publish");
+            string publishText = ModEntry.SHelper.Translation.Get("createPost.publish");
+            Vector2 publishSize = MeasurePhoneText(Game1.smallFont, publishText);
             Vector2 publishPos = new Vector2(
                 this.socialCreateSubmitBounds.X + (this.socialCreateSubmitBounds.Width - publishSize.X) / 2f,
                 this.socialCreateSubmitBounds.Y + (this.socialCreateSubmitBounds.Height - publishSize.Y) / 2f
             );
-            DrawPhoneText(b, Game1.smallFont, "Publish", publishPos, Color.Black);
+            DrawPhoneText(b, Game1.smallFont, publishText, publishPos, Color.Black);
         }
 
         private void DrawSocialTagMenu(SpriteBatch b, Rectangle clipRect)
@@ -213,7 +215,7 @@ namespace SmartphoneAppStardewSocial
                 Color.White, 1f, false);
 
             // Title
-            string titleText = "Tag People";
+            string titleText = ModEntry.SHelper.Translation.Get("createPost.tagPeople");
             Vector2 titleSize = MeasurePhoneText(Game1.smallFont, titleText, 1.1f);
             DrawPhoneText(b, Game1.smallFont, titleText, new Vector2(popupRect.X + (popupRect.Width - titleSize.X) / 2f, popupRect.Y + ScaleUiValue(15)), Color.Black, 1.1f);
 
@@ -232,8 +234,9 @@ namespace SmartphoneAppStardewSocial
                 b,
                 doneBounds.X, doneBounds.Y, doneBounds.Width, doneBounds.Height,
                 Color.White, 1f, false);
-            Vector2 doneSize = MeasurePhoneText(Game1.smallFont, "Done", 0.8f);
-            DrawPhoneText(b, Game1.smallFont, "Done", new Vector2(doneBounds.X + (doneBounds.Width - doneSize.X) / 2f, doneBounds.Y + (doneBounds.Height - doneSize.Y) / 2f), Color.Black, 0.8f);
+            string doneText = ModEntry.SHelper.Translation.Get("createPost.done");
+            Vector2 doneSize = MeasurePhoneText(Game1.smallFont, doneText, 0.8f);
+            DrawPhoneText(b, Game1.smallFont, doneText, new Vector2(doneBounds.X + (doneBounds.Width - doneSize.X) / 2f, doneBounds.Y + (doneBounds.Height - doneSize.Y) / 2f), Color.Black, 0.8f);
 
             // Scrollable list area
             int listY = searchBounds.Bottom + ScaleUiValue(15);
