@@ -42,7 +42,6 @@ namespace SmartphoneAppStardewSocial
 
         public string PostPerDay { get; set; } = PostPerDayLow;
         public string Language { get; set; } = "English";
-        public string AppIconStyle { get; set; } = "default";
 
         public string Key { get; set; } = string.Empty;
         public string Model { get; set; } = OpenAIModel_54mini;
@@ -63,7 +62,7 @@ namespace SmartphoneAppStardewSocial
 
         // advance
         public string CustomApiEndpoint { get; set; } = string.Empty;
-        public string CustomApiKey { get; set; } = string.Empty;        
+        public string CustomApiKey { get; set; } = string.Empty;
         public string CustomApiKeyHeader { get; set; } = "Authorization";
         public string CustomApiKeyPrefix { get; set; } = "Bearer";
         public string CustomApiPayloadTemplate { get; set; } = "{\"model\":\"MODEL_HERE\",\"messages\":[{\"role\":\"system\",\"content\":\"SYSTEM_INPUT_HERE\"},{\"role\":\"user\",\"content\":\"USER_INPUT_HERE\"}]}";

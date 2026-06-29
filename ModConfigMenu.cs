@@ -67,7 +67,7 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddTextOption(
                 mod: ModManifest,
                 name: () => "Language",
-                tooltip: () => "The language and alphabet you want the AI to generate in.",
+                tooltip: () => "Enter your prefered language and alphabet. However English is the best supported.",
                 getValue: () => string.IsNullOrWhiteSpace(Config.Language) ? "English" : Config.Language,
                 setValue: value => Config.Language = string.IsNullOrWhiteSpace(value) ? "English" : value.Trim()
             );
@@ -75,7 +75,7 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddBoolOption(
                 mod: ModManifest,
                 name: () => "Show Social Image Tags",
-                tooltip: () => "Show tags for attached photos in social tooltips.",
+                tooltip: () => "Shows saved image tag text above attached images in StardewSocial posts.",
                 getValue: () => Config.ShowSocialImageTags,
                 setValue: value => Config.ShowSocialImageTags = value
             );
@@ -83,47 +83,27 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddBoolOption(
                 mod: ModManifest,
                 name: () => "Show Unread Comment",
-                tooltip: () => "Show unread comment indicator.",
+                tooltip: () => "Shows unread comment count on posts.",
                 getValue: () => Config.ShowUnreadComment,
                 setValue: value => Config.ShowUnreadComment = value
-            );
-
-            configMenu.AddTextOption(
-                mod: ModManifest,
-                name: () => "App Icon Style",
-                tooltip: () => "The style of the app icon on the smartphone home screen.",
-                getValue: () => string.IsNullOrWhiteSpace(Config.AppIconStyle) ? "default" : Config.AppIconStyle,
-                setValue: value =>
-                {
-                    Config.AppIconStyle = value == "v2" ? "v2" : "default";
-                    if (iSmartphoneApi != null)
-                    {
-                        try
-                        {
-                            iSmartphoneApi.SetComponentTheme("app_d5a1lamdtd.Smartphone-AppStardewSocial::StardewSocial", Config.AppIconStyle);
-                        }
-                        catch { }
-                    }
-                },
-                allowedValues: new string[] { "default", "v2" }
             );
 
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "ai-settings",
                 text: () => "AI Settings",
-                tooltip: () => "Configure API keys and models."
+                tooltip: () => "API key, model choice, and limits setting."
             );
 
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "storage-limits",
-                text: () => "Limits & Storage",
-                tooltip: () => "Configure post retention and photo limits."
+                text: () => "Storage and Limits",
+                tooltip: () => "Storage settings."
             );
 
 
-            
+
             configMenu.AddPageLink(
                 mod: ModManifest,
                 pageId: "advance-settings",
@@ -135,13 +115,13 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddPage(mod: ModManifest, pageId: "ai-settings", pageTitle: () => "AI Settings");
             configMenu.AddParagraph(
                 mod: ModManifest,
-                text: () => "All option below required API key provided."
+                text: () => "These settings are only effective when an API key is provided. You can use your own OpenAI or Gemini key. When using custom API, key and model options here have no effect."
             );
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "API Key",
-                tooltip: () => "Your OpenAI or Gemini API Key.",
+                name: () => "Key",
+                tooltip: () => "Use your own OpenAI or Gemini key to remove shared usage limits.\nOpenAI key: https://platform.openai.com/account/api-keys\nGemini key: https://aistudio.google.com/app/apikey\nRestart the game after changing this value.",
                 getValue: () => Config.Key,
                 setValue: value => Config.Key = value
             );
@@ -149,7 +129,7 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddTextOption(
                 mod: ModManifest,
                 name: () => "Model",
-                tooltip: () => "Select the AI model to use.",
+                tooltip: () => "Chooses the model.\nOf course if you using OpenAI key, you should choose OpenAI model and vice versa for Gemini key.",
                 getValue: () => EnsureAllowedValue(Config.Model, ModConfig.OpenAIModel_54mini, aiModelValues),
                 setValue: value => Config.Model = value,
                 allowedValues: aiModelValues
@@ -157,8 +137,8 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "Post Frequency",
-                tooltip: () => "Choose post frequency per day.",
+                name: () => "StardewSocial activity",
+                tooltip: () => "Controls how often StardewSocial posts and engagement are generated.",
                 getValue: () => EnsureAllowedValue(Config.PostPerDay, ModConfig.PostPerDayLow, postPerDayValues),
                 setValue: value => Config.PostPerDay = value,
                 allowedValues: postPerDayValues
@@ -166,8 +146,8 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddTextOption(
                 mod: ModManifest,
-                name: () => "NPC Characteristic Detail",
-                tooltip: () => "How much background information to send to the AI.",
+                name: () => "NPC characteristic detail",
+                tooltip: () => "NPC characteristic give the AI a background for each NPC during the chat and the post generation.\nHigher detail improves quality but uses more tokens per NPC.",
                 getValue: () => EnsureAllowedValue(Config.CharacteristicMode, ModConfig.CharacteristicModeShort, characteristicValues),
                 setValue: value => Config.CharacteristicMode = value,
                 allowedValues: characteristicValues
@@ -175,19 +155,19 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddBoolOption(
                 mod: ModManifest,
-                name: () => "Better Quality Comment",
-                tooltip: () => "Generate comments with better quality (might take slightly longer).",
+                name: () => "High quality comment",
+                tooltip: () => "If enabled, AI will be provided with the minimal characteristic detail for each NPC.\nThis may improve the quality of comments but will use more tokens.",
                 getValue: () => Config.BetterQualityComment,
                 setValue: value => Config.BetterQualityComment = value
             );
 
-            // Limits & Storage page
-            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => "Limits & Storage");
+            // Storage and Limits page
+            configMenu.AddPage(mod: ModManifest, pageId: "storage-limits", pageTitle: () => "Storage and Limits");
 
             configMenu.AddNumberOption(
                 mod: ModManifest,
-                name: () => "Max StardewConnect Posts",
-                tooltip: () => "Max number of posts to keep in StardewConnect.",
+                name: () => "StardewSocial posts to keep",
+                tooltip: () => "Older posts are removed first when this limit is exceeded.",
                 getValue: () => Config.MaxStardewConnectPosts,
                 setValue: value => Config.MaxStardewConnectPosts = Math.Clamp(value, 10, 1000),
                 min: 10,
@@ -196,8 +176,8 @@ namespace SmartphoneAppStardewSocial
 
             configMenu.AddNumberOption(
                 mod: ModManifest,
-                name: () => "Max Photos",
-                tooltip: () => "Max number of photos to keep in photo_shared folder.",
+                name: () => "Player photos to keep",
+                tooltip: () => "Older player photos are deleted first.",
                 getValue: () => Config.MaxPhoto,
                 setValue: value => Config.MaxPhoto = Math.Clamp(value, 10, 1000),
                 min: 10,
@@ -210,7 +190,7 @@ namespace SmartphoneAppStardewSocial
             configMenu.AddPage(mod: ModManifest, pageId: "advance-settings", pageTitle: () => "Advance - Custom API");
             configMenu.AddParagraph(
                 mod: ModManifest,
-                text: () => "When using this advance setting, key and model selection on regular AI setting will be override."
+                text: () => "When using this advance setting, key and model selection on regular AI setting will be override. See mod page for instruction how to use these settings."
             );
 
             configMenu.AddTextOption(
