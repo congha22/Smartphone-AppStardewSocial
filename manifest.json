@@ -1,11 +1,14 @@
 {
   "Name": "Smartphone App Stardew Social",
   "Author": "d5a1lamdtd",
-  "Version": "1.0.0",
-  "Description": "Decoupled Stardew Social app for Smartphone.",
+  "Version": "1.0",
+  "Description": "Stardew Social app for Smartphone.",
   "UniqueID": "d5a1lamdtd.Smartphone-AppStardewSocial",
   "EntryDll": "Smartphone-AppStardewSocial.dll",
   "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [
+    "Nexus:48348"
+  ],
   "Dependencies": [
     {
       "UniqueID": "d5a1lamdtd.Smartphone",

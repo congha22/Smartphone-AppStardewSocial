@@ -671,9 +671,9 @@ namespace SmartphoneAppStardewSocial
                         // SMonitor.Log(system, LogLevel.Error);
                         // SMonitor.Log("user-----", LogLevel.Error);
                         // SMonitor.Log(user, LogLevel.Error);
-                        SMonitor.Log("response-----", LogLevel.Error);
-                        SMonitor.Log(jsonResponse, LogLevel.Error);
-                        SMonitor.Log("\n\n", LogLevel.Error);
+                        // SMonitor.Log("response-----", LogLevel.Error);
+                        // SMonitor.Log(jsonResponse, LogLevel.Error);
+                        // SMonitor.Log("\n\n", LogLevel.Error);
 
                         string responseText;
                         if (provider == AiProviderGemini)
