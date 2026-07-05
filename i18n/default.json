@@ -81,5 +81,9 @@
   "createPost.tagPeople": "Tag People",
   "createPost.done": "Done",
   "time.format": "at {{time}} {{season}} {{day}}",
-  "widget.noPosts": "No posts yet."
+  "widget.noPosts": "No posts yet.",
+  "keyboard.title.createPost": "Create Post",
+  "keyboard.title.comment": "Write Comment",
+  "keyboard.title.tagPeople": "Tag People",
+  "keyboard.description": "Enter text"
 }

@@ -204,6 +204,17 @@ namespace SmartphoneAppStardewSocial
         // Height caches
         private readonly Dictionary<string, int> socialCardHeightCache = new(StringComparer.OrdinalIgnoreCase);
 
+        // Android keyboard fields
+        private System.Threading.Tasks.Task<string>? pendingKeyboardTask = null;
+        private enum ActiveInput
+        {
+            None,
+            Post,
+            Comment,
+            TagSearch
+        }
+        private ActiveInput activeAndroidInput = ActiveInput.None;
+
         // IKeyboardSubscriber Implementation
         public bool Selected { get; set; }
 
@@ -1553,8 +1564,45 @@ namespace SmartphoneAppStardewSocial
 
                 if (this.socialCreateMenuOpen)
                 {
-                    // Focus post draft text area
-                    this.postTextBox.SetCursorFromClick(x, new Rectangle(clipRect.X + ScaleUiValue(15), clipRect.Y + ScaleUiValue(15), clipRect.Width - ScaleUiValue(30), ScaleUiValue(180)), this.phoneUiScale);
+                    if (this.socialTagMenuOpen)
+                    {
+                        // Focus tag search text area
+                        int margin = ScaleUiValue(15);
+                        Rectangle popupRect = new Rectangle(
+                            clipRect.X + margin,
+                            clipRect.Y + margin,
+                            clipRect.Width - (margin * 2),
+                            clipRect.Height - (margin * 2));
+                        Rectangle searchBounds = new Rectangle(popupRect.X + ScaleUiValue(15), popupRect.Y + ScaleUiValue(50), popupRect.Width - ScaleUiValue(30), ScaleUiValue(56));
+
+                        if (searchBounds.Contains(x, y))
+                        {
+                            if (Constants.TargetPlatform == GamePlatform.Android)
+                            {
+                                TriggerAndroidKeyboard(ActiveInput.TagSearch, ModEntry.SHelper.Translation.Get("keyboard.title.tagPeople"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.tagSearchTextBox.Text);
+                            }
+                            else
+                            {
+                                this.tagSearchTextBox.SetCursorFromClick(x, searchBounds, this.phoneUiScale);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Focus post draft text area
+                        Rectangle inputBounds = new Rectangle(clipRect.X + ScaleUiValue(15), clipRect.Y + ScaleUiValue(15), clipRect.Width - ScaleUiValue(30), ScaleUiValue(180));
+                        if (inputBounds.Contains(x, y))
+                        {
+                            if (Constants.TargetPlatform == GamePlatform.Android)
+                            {
+                                TriggerAndroidKeyboard(ActiveInput.Post, ModEntry.SHelper.Translation.Get("keyboard.title.createPost"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.postTextBox.Text);
+                            }
+                            else
+                            {
+                                this.postTextBox.SetCursorFromClick(x, inputBounds, this.phoneUiScale);
+                            }
+                        }
+                    }
                 }
                 else if (!string.IsNullOrWhiteSpace(this.selectedSocialPostId))
                 {
@@ -1562,7 +1610,14 @@ namespace SmartphoneAppStardewSocial
                     Rectangle commentInputBounds = new Rectangle(clipRect.X + ScaleUiValue(15), clipRect.Bottom - ScaleUiValue(75), clipRect.Width - ScaleUiValue(95), ScaleUiValue(60));
                     if (commentInputBounds.Contains(x, y))
                     {
-                        this.commentTextBox.SetCursorFromClick(x, commentInputBounds, this.phoneUiScale);
+                        if (Constants.TargetPlatform == GamePlatform.Android)
+                        {
+                            TriggerAndroidKeyboard(ActiveInput.Comment, ModEntry.SHelper.Translation.Get("keyboard.title.comment"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.commentTextBox.Text);
+                        }
+                        else
+                        {
+                            this.commentTextBox.SetCursorFromClick(x, commentInputBounds, this.phoneUiScale);
+                        }
                     }
                 }
             }
@@ -2320,6 +2375,7 @@ namespace SmartphoneAppStardewSocial
             this.tagMenuScrollOffset = MathHelper.Lerp(this.tagMenuScrollOffset, this.tagMenuScrollTarget, Math.Min(1f, lerpFactor));
 
             // TextBox update
+            UpdateAndroidKeyboard();
             this.postTextBox.Update(time, this.Selected && this.socialCreateMenuOpen && !this.socialTagMenuOpen);
             this.tagSearchTextBox.Update(time, this.Selected && this.socialCreateMenuOpen && this.socialTagMenuOpen);
             this.commentTextBox.Update(time, this.Selected && !string.IsNullOrWhiteSpace(this.selectedSocialPostId));
@@ -2403,6 +2459,61 @@ namespace SmartphoneAppStardewSocial
             this.draftPhotoPreviewIndex = 0;
 
             base.cleanupBeforeExit();
+        }
+
+        private void TriggerAndroidKeyboard(ActiveInput fieldType, string title, string description, string currentText)
+        {
+            if (Constants.TargetPlatform != GamePlatform.Android) return;
+            this.activeAndroidInput = fieldType;
+
+            try
+            {
+                Type? keyboardInputType = typeof(Microsoft.Xna.Framework.Input.Keyboard).Assembly.GetType("Microsoft.Xna.Framework.Input.KeyboardInput");
+                if (keyboardInputType != null)
+                {
+                    var showMethod = keyboardInputType.GetMethod("Show", new[] { typeof(string), typeof(string), typeof(string), typeof(bool) });
+                    if (showMethod != null)
+                    {
+                        this.pendingKeyboardTask = (System.Threading.Tasks.Task<string>)showMethod.Invoke(null, new object[] { title, description, currentText, false })!;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                this.pendingKeyboardTask = null;
+                this.activeAndroidInput = ActiveInput.None;
+            }
+        }
+
+        private void UpdateAndroidKeyboard()
+        {
+            if (this.pendingKeyboardTask != null && this.pendingKeyboardTask.IsCompleted)
+            {
+                if (!this.pendingKeyboardTask.IsFaulted && this.pendingKeyboardTask.Result != null)
+                {
+                    string result = this.pendingKeyboardTask.Result;
+                    switch (this.activeAndroidInput)
+                    {
+                        case ActiveInput.Post:
+                            this.postTextBox.Text = result;
+                            this.postTextBox.CursorIndex = result.Length;
+                            this.postTextBox.SelectionAnchorIndex = result.Length;
+                            break;
+                        case ActiveInput.Comment:
+                            this.commentTextBox.Text = result;
+                            this.commentTextBox.CursorIndex = result.Length;
+                            this.commentTextBox.SelectionAnchorIndex = result.Length;
+                            break;
+                        case ActiveInput.TagSearch:
+                            this.tagSearchTextBox.Text = result;
+                            this.tagSearchTextBox.CursorIndex = result.Length;
+                            this.tagSearchTextBox.SelectionAnchorIndex = result.Length;
+                            break;
+                    }
+                }
+                this.pendingKeyboardTask = null;
+                this.activeAndroidInput = ActiveInput.None;
+            }
         }
 
         // IKeyboardSubscriber Keyboard handling
