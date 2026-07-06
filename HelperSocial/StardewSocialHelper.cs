@@ -13,20 +13,33 @@ namespace SmartphoneAppStardewSocial
     {
         public static List<NPC> CachedContactableNpcs = new();
 
-        public static void UpdateContactableNpcs(List<string> contactableNames)
+        public static void UpdateContactableNpcsFromConfig()
         {
-            if (contactableNames != null)
+            List<NPC> validNpcs = new();
+            if (Config != null && !string.IsNullOrWhiteSpace(Config.AllowedNpc))
             {
-                var nameSet = new HashSet<string>(contactableNames, StringComparer.OrdinalIgnoreCase);
-                CachedContactableNpcs = Utility.getAllVillagers()
-                    .OfType<NPC>()
-                    .Where(npc => npc != null && nameSet.Contains(npc.Name))
+                var names = Config.AllowedNpc.Split(',')
+                    .Select(n => n.Trim())
+                    .Where(n => !string.IsNullOrEmpty(n))
                     .ToList();
+
+                string req = Config.FriendshipRequirement; // "Meet" or "Friend"
+                int requiredPoints = string.Equals(req, "Friend", StringComparison.OrdinalIgnoreCase) ? 250 : 1;
+
+                foreach (var name in names)
+                {
+                    NPC npc = Game1.getCharacterFromName(name);
+                    if (npc != null)
+                    {
+                        int points = Game1.player.getFriendshipLevelForNPC(name);
+                        if (points >= requiredPoints)
+                        {
+                            validNpcs.Add(npc);
+                        }
+                    }
+                }
             }
-            else
-            {
-                CachedContactableNpcs = new List<NPC>();
-            }
+            CachedContactableNpcs = validNpcs;
         }
 
         public static List<NPC> GetContactableNpcsList()

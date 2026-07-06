@@ -43,6 +43,9 @@ namespace SmartphoneAppStardewSocial
         public string PostPerDay { get; set; } = PostPerDayLow;
         public string Language { get; set; } = "English";
 
+        public string AllowedNpc { get; set; } = "Alex, Abigail, Haley, Emily, Lewis";
+        public string FriendshipRequirement { get; set; } = "Meet";
+
         public string Key { get; set; } = string.Empty;
         public string Model { get; set; } = OpenAIModel_54mini;
         public string CharacteristicMode { get; set; } = CharacteristicModeShort;

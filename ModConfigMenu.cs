@@ -57,6 +57,10 @@ namespace SmartphoneAppStardewSocial
                     {
                         Instance.LoadAssets();
                         Instance.RegisterStardewSocialApp();
+                        if (Context.IsWorldReady)
+                        {
+                            UpdateContactableNpcsFromConfig();
+                        }
                     }
                     catch { }
                 }
@@ -86,6 +90,23 @@ namespace SmartphoneAppStardewSocial
                 tooltip: () => Helper.Translation.Get("config.showUnreadComment.tooltip"),
                 getValue: () => Config.ShowUnreadComment,
                 setValue: value => Config.ShowUnreadComment = value
+            );
+
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => Helper.Translation.Get("config.allowedNpc.name"),
+                tooltip: () => Helper.Translation.Get("config.allowedNpc.tooltip"),
+                getValue: () => Config.AllowedNpc,
+                setValue: value => Config.AllowedNpc = value
+            );
+
+            configMenu.AddTextOption(
+                mod: ModManifest,
+                name: () => Helper.Translation.Get("config.friendshipRequirement.name"),
+                tooltip: () => Helper.Translation.Get("config.friendshipRequirement.tooltip"),
+                getValue: () => Config.FriendshipRequirement,
+                setValue: value => Config.FriendshipRequirement = value,
+                allowedValues: new[] { "Meet", "Friend" }
             );
 
             configMenu.AddPageLink(

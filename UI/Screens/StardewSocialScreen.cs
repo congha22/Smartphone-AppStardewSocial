@@ -2880,8 +2880,8 @@ namespace SmartphoneAppStardewSocial
 
         private List<string> GetFilteredTagCandidates()
         {
-            var allNpcs = Utility.getAllVillagers()
-                .Where(npc => npc != null && !npc.IsMonster && !npc.IsInvisible && npc.CanSocialize)
+            var allNpcs = ModEntry.GetContactableNpcsList()
+                .Where(npc => npc != null)
                 .Select(npc => npc.Name)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();

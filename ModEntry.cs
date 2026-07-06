@@ -64,6 +64,7 @@ namespace SmartphoneAppStardewSocial
             StardewConnectManager.EnforcePhotoSharedRetention();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
+            UpdateContactableNpcsFromConfig();
 
             IndoorAreasByLocation = SHelper.Data.ReadJsonFile<Dictionary<string, Dictionary<string, AreaData>>>("assets/area_indoor.json")
                         ?? new Dictionary<string, Dictionary<string, AreaData>>();
@@ -116,6 +117,7 @@ namespace SmartphoneAppStardewSocial
         {
             if (!modReady)
                 return;
+            UpdateContactableNpcsFromConfig();
             UpdatePostInteractionLimit();
             UpdateSocialPostLimit();
             CleanPhotoTempFolder();
@@ -180,8 +182,6 @@ namespace SmartphoneAppStardewSocial
                 this.Monitor.Log("Smartphone API is unavailable; Stardew Social app was not registered.", LogLevel.Warn);
                 return;
             }
-
-            iSmartphoneApi.ContactableNpcsChanged += UpdateContactableNpcs;
 
             this.LoadAssets();
             this.RegisterStardewSocialApp();
