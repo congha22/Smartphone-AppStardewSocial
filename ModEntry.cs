@@ -72,28 +72,10 @@ namespace SmartphoneAppStardewSocial
             OutdoorAreasByLocation = SHelper.Data.ReadJsonFile<Dictionary<string, Dictionary<string, AreaData>>>("assets/area_outdoor.json")
                         ?? new Dictionary<string, Dictionary<string, AreaData>>();
 
-            try
-            {
-                var long_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_long.json");
-                if (long_ != null) NpcCharacteristicsLong = long_;
-            }
-            catch { }
-
-            try
-            {
-                var short_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_short.json");
-                if (short_ != null) NpcCharacteristicsShort = short_;
-            }
-            catch { }
-
-            try
-            {
-                var minimal_ = this.Helper.ModContent.Load<Dictionary<string, string>>("assets/npc_characteristics_minimal.json");
-                if (minimal_ != null) NpcCharacteristicsMinimal = minimal_;
-            }
-            catch { }
+            this.LoadNpcCharacteristics();
 
             areaTags = new Dictionary<string, Dictionary<string, AreaData>>(IndoorAreasByLocation);
+
             foreach (var kvp in OutdoorAreasByLocation)
             {
                 areaTags[kvp.Key] = kvp.Value;
@@ -217,6 +199,29 @@ namespace SmartphoneAppStardewSocial
             catch (Exception ex)
             {
                 this.Monitor.Log($"Failed to load Stardew Social assets: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        public void LoadNpcCharacteristics()
+        {
+            string theme = Config.NpcProfileTheme;
+            if (string.IsNullOrWhiteSpace(theme) || !Directory.Exists(Path.Combine(this.Helper.DirectoryPath, "npc_profile", theme)))
+            {
+                theme = "vanilla";
+            }
+
+            try
+            {
+                NpcCharacteristicsLong = this.Helper.ModContent.Load<Dictionary<string, string>>($"npc_profile/{theme}/npc_characteristics_long.json") ?? new();
+                NpcCharacteristicsShort = this.Helper.ModContent.Load<Dictionary<string, string>>($"npc_profile/{theme}/npc_characteristics_short.json") ?? new();
+                NpcCharacteristicsMinimal = this.Helper.ModContent.Load<Dictionary<string, string>>($"npc_profile/{theme}/npc_characteristics_minimal.json") ?? new();
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Failed to load NPC characteristics for theme '{theme}': {ex.Message}", LogLevel.Error);
+                NpcCharacteristicsLong = new();
+                NpcCharacteristicsShort = new();
+                NpcCharacteristicsMinimal = new();
             }
         }
 

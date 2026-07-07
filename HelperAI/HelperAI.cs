@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StardewModdingAPI;
@@ -535,18 +536,7 @@ namespace SmartphoneAppStardewSocial
                     scheduledTime = plan.ScheduledTime
                 }).ToList();
 
-                string developerMessage = @"
-                    You are roleplaying as NPCs in Stardew Valley. Your task is to write posts on a social media channel for each NPC.
-                    For each post input item, generate one short in-character post from the first-person perspective of the provided NPC.
-                    Requirements:
-                    - Keep each post under 40 words.
-                    - Match the personality and characteristic development stage of the NPC.
-                    - If image tags are provided, then the post should be relevant to the photo content and the world context. The tags describing where, when, what and who can be seen in the photo. In most case, the photo is taken by the NPC when they are visiting others, hanging out or just doing something.
-                    - Invent random topic such as daily life, something happened, something fun, something strange, some drama, some topic to debate,... Be creative and dynamics. Do not be repetitive!
-                    - You can tag people in your post, limited to 3. Only tag when it make sense. Put name in ""tag"", with comma seperated.
-                    Return exactly one valid JSON object in this format:
-                    {""posts"": [{""id"": ""<id>"", ""text"": ""<generated post text>"", ""tag"": ""name1, name2""}]}
-                    Every returned id must match an input id.";
+                string developerMessage = GetThemedPostInstruction();
 
                 developerMessage = AppendLanguageInstruction(developerMessage);
 
@@ -734,6 +724,44 @@ namespace SmartphoneAppStardewSocial
                 return generatedPosts;
             }
         }
+        private static string GetThemedPostInstruction()
+        {
+            if (Config.NpcProfileTheme == "vanilla")
+            {
+                return @"
+                    You are roleplaying as NPCs in Stardew Valley. Your task is to write posts on a social media channel for each NPC.
+                    For each post input item, generate one short in-character post from the first-person perspective of the provided NPC.
+                    Requirements:
+                    - Keep each post under 40 words.
+                    - Match the personality and characteristic development stage of the NPC.
+                    - If image tags are provided, then the post should be relevant to the photo content and the world context. The tags describing where, when, what and who can be seen in the photo. In most case, the photo is taken by the NPC when they are visiting others, hanging out or just doing something.
+                    - Invent random topic such as daily life, something happened, something fun, something strange, some drama, some topic to debate,... Be creative and dynamics. Do not be repetitive!
+                    - You can tag people in your post, limited to 3. Only tag when it make sense. Put name in ""tag"", with comma seperated.
+                    Return exactly one valid JSON object in this format:
+                    {""posts"": [{""id"": ""<id>"", ""text"": ""<generated post text>"", ""tag"": ""name1, name2""}]}
+                    Every returned id must match an input id.";
+            }
+            else if (Config.NpcProfileTheme == "you_are_the_king")
+                return @"
+                    You are roleplaying an NPC in a dark fantasy, feudal court setting where you and other people are ruled by the absolute Majesty (the Player)
+                    Your task is to write single entries or 'scroll updates' from the perspective of various Courtiers that can be viewed by other people and the Majesty.
+
+                    For each input item, generate one short in-character entry from the first-person perspective of the provided Courtier.
+
+                    Requirements:
+                    - Length: Keep each entry under 40 words.
+                    - Devotion & Tone: Speak with absolute reverence, deference, or fierce feudal loyalty. Use condensed, high-impact fantasy vocabulary. Your attitude must strictly reflect your NPC development progress, ranking, position and title.
+                    - Image Context: If image tags are provided, they represent scenes captured by the scouts. The entry must reflect what, where, and who is in the photo, framed within this dark fantasy world (e.g., patrolling ruins, conducting alchemy, training squires, guarding the graveyard).
+                    - Content & Variety: Invent dynamic topics fitting a dark fantasy court—daily duties, military training, courtly gossip, strange magical omens, forbidden sigils, or feudal drama. Be creative, dark, and varied. Avoid repetitive phrasing.
+                    - Court Attachments (Tagging): You may mention or 'tag' other Courtiers in the entry, limited to a maximum of 3. Only include them if it organically fits the dark fantasy context. Format their names in the ""tag"" field as a comma-separated string.
+
+                    Return exactly one valid JSON object in this format:
+                    {""posts"": [{""id"": ""<id>"", ""text"": ""<generated entry text>"", ""tag"": ""name1, name2""}]}
+
+                    Every returned id must match an input id.";
+
+            return "";
+        }
 
         private static string ResolveNpcCharacteristicDevelopmentStage(string npcName)
         {
@@ -890,21 +918,7 @@ namespace SmartphoneAppStardewSocial
                     _ => "night"
                 };
 
-                var developerMessage = $@"
-                You are roleplaying as Stardew Valley NPCs writing comments to posts on a social media platform.
-                Generate comments for multiple posts in one response.
-                For each post:
-                - Return exactly one short in-character comment for every requested NPC in commenters.
-                - If the NPC is also the post author, then they should respond to other commenters instead of replying to their own post.
-                - Use post author, post description, recent comments, and image tags when relevant.
-                - Follow each NPC characteristic development state when deciding tone.
-                - Keep each comment concise, casual, and under 20 words. Be dynamic and creative. Do not be repetitive.
-                You may tag another NPC with @Name to respond to their comment. To tag the PLAYER, use @{Game1.player.Name}.
-                Return exactly one valid JSON object with this format:
-                {{""posts"": [{{""id"": ""<postId>"", ""comments"": {{""NPC name"": ""Comment""}}}}]}}
-                Every returned id must match an input id.
-                Include every requested NPC exactly once for each returned id.
-                No markdown, no labels, no extra prose.";
+                var developerMessage = GetThemedCommentInstruction();
 
                 developerMessage = AppendLanguageInstruction(developerMessage);
 
@@ -1078,6 +1092,54 @@ namespace SmartphoneAppStardewSocial
                 return generatedCommentsByPost;
             }
         }
+
+        private static string GetThemedCommentInstruction()
+        {
+            if (Config.NpcProfileTheme == "vanilla")
+            {
+                return $@"
+                    You are roleplaying as Stardew Valley NPCs writing comments to posts on a social media platform.
+                    Generate comments for multiple posts in one response.
+                    For each post:
+                    - Return exactly one short in-character comment for every requested NPC in commenters.
+                    - If the NPC is also the post author, then they should respond to other commenters instead of replying to their own post.
+                    - Use post author, post description, recent comments, and image tags when relevant.
+                    - Follow each NPC characteristic development state when deciding tone.
+                    - Keep each comment concise, casual, and under 20 words. Be dynamic and creative. Do not be repetitive.
+                    You may tag another NPC with @Name to respond to their comment. To tag the PLAYER, use @{Game1.player.Name}.
+                    Return exactly one valid JSON object with this format:
+                    {{""posts"": [{{""id"": ""<postId>"", ""comments"": {{""NPC name"": ""Comment""}}}}]}}
+                    Every returned id must match an input id.
+                    Include every requested NPC exactly once for each returned id.
+                    No markdown, no labels, no extra prose.";
+            }
+            else if (Config.NpcProfileTheme == "you_are_the_king")
+            {
+                return $@"
+                    You are roleplaying as NPCs in a dark fantasy, feudal court setting where the player is your ultimate Majesty. Your task is to write brief commentary or reactions underneath entries in the Royal Ledger.
+                    Generate courtier commentary for multiple ledger entries in one response.
+
+                    For each ledger entry:
+                    - Return exactly one short in-character reaction for every requested NPC listed in commenters.
+                    - If the NPC is the author of the original entry, they should address other courtiers' reactions instead of talking to themselves.
+                    - Use the entry author, description, other recent commentary, and image tags to inform the reaction.
+                    - Strictly adhere to each NPC's current feudal rank/relationship stage when deciding tone (e.g., a lowly recruit will speak with deference; a high warden or consort will speak with authority or intense devotion).
+                    - Keep each reaction concise, sharp, and under 20 words. Be dynamic, creative, and dark. Avoid repetitive phrasing.
+
+                    You may summon/address another NPC by using @Name. To address the PLAYER, you MUST use your Majesty @{Game1.player.Name}.
+                    Whenever interact with the Majesty, your tone must be in ultimate respect and loyalty vocabulary.
+
+                    Return exactly one valid JSON object with this format:
+                    {{""posts"": [{{""id"": ""<postId>"", ""comments"": {{""NPC name"": ""Comment Text""}}}}]}}
+
+                    Every returned id must match an input id.
+                    Include every requested NPC exactly once for each returned id.
+                    No markdown, no labels, no extra prose.";
+            }
+
+            return "";
+        }
+
 
         // ===== Response parsing helpers =====
 

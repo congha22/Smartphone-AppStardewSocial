@@ -43,13 +43,15 @@ namespace SmartphoneAppStardewSocial
         public string PostPerDay { get; set; } = PostPerDayLow;
         public string Language { get; set; } = "English";
 
-        public string AllowedNpc { get; set; } = "Alex, Abigail, Haley, Emily, Lewis";
+        public string AllowedNpc { get; set; } = "Abigail, Alex, Caroline, Clint, Demetrius, Elliott, Emily, Evelyn, George, Gus, Haley, Harvey, Jas, Jodi, Kent, Leah, Leo, Lewis, Linus, Marnie, Maru, Pam, Penny, Pierre, Robin, Sam, Sandy, Sebastian, Shane, Vincent, Willy, Wizard, Alesia, Andy, Camilla, Claire, Gunther, Isaac, MarlonFay, Martin, MorrisTod, Olivia, Sophia, Susan, Scarlett, Victor";
         public string FriendshipRequirement { get; set; } = "Meet";
 
         public string Key { get; set; } = string.Empty;
         public string Model { get; set; } = OpenAIModel_54mini;
         public string CharacteristicMode { get; set; } = CharacteristicModeShort;
         public bool BetterQualityComment { get; set; } = false;
+        public string NpcProfileTheme { get; set; } = "vanilla";
+
 
         public int MaxStardewConnectPosts { get; set; } = 100;
         public int MaxPhoto { get; set; } = 200;

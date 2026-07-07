@@ -47,8 +47,8 @@ namespace SmartphoneAppStardewSocial
             return CachedContactableNpcs;
         }
 
-        private static int SocialActionMaxDelayMilliseconds = 140000;
-        private static int SocialPostMaxDelayMilliseconds = 70000;
+        private static int SocialActionMaxDelayMilliseconds = 140000; //140000
+        private static int SocialPostMaxDelayMilliseconds = 70000;//70000
         private static double SocialRepeatCommentChance = 0.30;
         private static readonly List<DailySocialPostPlan> DailyScheduledSocialPosts = new();
         private static bool DailySocialPostTextGenerationRequested = false;
