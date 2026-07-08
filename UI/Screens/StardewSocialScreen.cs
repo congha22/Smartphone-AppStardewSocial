@@ -3135,5 +3135,136 @@ namespace SmartphoneAppStardewSocial
             avatarFailedImagePaths.Add(imagePath);
             return false;
         }
+
+        public void DrawScreenContent(SpriteBatch b, Rectangle content)
+        {
+            float oldScale = this.phoneUiScale;
+            int oldX = this.xPositionOnScreen;
+            int oldY = this.yPositionOnScreen;
+            int oldWidth = this.width;
+            int oldHeight = this.height;
+            int oldPhoneWidth = this.phoneFrameWidth;
+            int oldPhoneHeight = this.phoneFrameHeight;
+            int oldContentOffsetX = this.phoneContentOffsetX;
+            int oldContentOffsetY = this.phoneContentOffsetY;
+            int oldContentWidth = this.contentWidth;
+            int oldContentHeight = this.contentHeight;
+
+            try
+            {
+                this.phoneUiScale = 1f;
+                this.phoneFrameWidth = 700;
+                this.phoneFrameHeight = 1100;
+                this.phoneContentOffsetX = 90;
+                this.phoneContentOffsetY = 166;
+                this.width = this.phoneFrameWidth;
+                this.height = this.phoneFrameHeight;
+                this.contentWidth = Math.Max(1, this.phoneFrameWidth - (this.phoneContentOffsetX * 2));
+                this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleUiValue(135));
+
+                this.xPositionOnScreen = -this.phoneContentOffsetX;
+                this.yPositionOnScreen = -this.phoneContentOffsetY;
+
+                this.ClearCachesAndRecalculate();
+
+                // Draw background wallpaper
+                Rectangle contentRect = GetContentBounds();
+                if (this.phoneBackgroundTexture != null && !this.phoneBackgroundTexture.IsDisposed)
+                {
+                    Rectangle bgRect = new Rectangle(contentRect.X, contentRect.Y, contentRect.Width, contentRect.Height + ScaleUiValue(20));
+                    b.Draw(this.phoneBackgroundTexture, bgRect, Color.White);
+                }
+                else
+                {
+                    Rectangle bgRect = new Rectangle(contentRect.X, contentRect.Y, contentRect.Width, contentRect.Height + ScaleUiValue(20));
+                    b.Draw(Game1.staminaRect, bgRect, new Color(30, 30, 30));
+                }
+
+                // Setup Scissor clipping viewport
+                bool isDetailView = !this.socialCreateMenuOpen && !this.socialNotificationMenuOpen && !this.socialProfileMenuOpen && !string.IsNullOrWhiteSpace(this.selectedSocialPostId);
+                Rectangle clipRect = isDetailView ? SocialDetailContentViewportRect : SocialContentViewportRect;
+                
+                b.End();
+                b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, new RasterizerState() { ScissorTestEnable = true });
+                Rectangle previousScissor = Game1.graphics.GraphicsDevice.ScissorRectangle;
+                Game1.graphics.GraphicsDevice.ScissorRectangle = clipRect;
+
+                if (this.socialCreateMenuOpen)
+                {
+                    DrawSocialCreatePostMenu(b, clipRect);
+                }
+                else if (this.socialNotificationMenuOpen)
+                {
+                    DrawSocialNotificationMenu(b, clipRect);
+                }
+                else if (this.socialProfileMenuOpen)
+                {
+                    DrawSocialProfile(b, clipRect);
+                }
+                else if (isDetailView)
+                {
+                    var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                    if (post != null)
+                    {
+                        DrawSocialDetail(b, post, clipRect);
+                    }
+                }
+                else
+                {
+                    DrawSocialFeed(b, clipRect);
+                }
+
+                b.End();
+                Game1.graphics.GraphicsDevice.ScissorRectangle = previousScissor;
+                b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+
+                if (isDetailView)
+                {
+                    DrawCommentInputBox(b);
+
+                    // Draw delete post button for author in the top nav bar area
+                    var post = StardewConnectManager.GetPost(this.selectedSocialPostId);
+                    if (post != null && post.AuthorIsPlayer && string.Equals(post.AuthorName, Game1.player?.Name ?? "Player", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int topButtonsY = this.yPositionOnScreen + this.phoneContentOffsetY - ScaleUiValue(54);
+                        int deleteBtnX = this.xPositionOnScreen + this.contentWidth - ScaleUiValue(160);
+                        this.socialDetailDeletePostBounds = new Rectangle(deleteBtnX, topButtonsY, ScaleUiValue(50), ScaleUiValue(52));
+
+                        UI.CardDrawing.DrawCard(
+                            b,
+                            this.socialDetailDeletePostBounds.X, this.socialDetailDeletePostBounds.Y,
+                            this.socialDetailDeletePostBounds.Width, this.socialDetailDeletePostBounds.Height,
+                            Color.OrangeRed, 1f, false);
+
+                        int trashW = ScaleUiValue(24);
+                        int trashH = ScaleUiValue(24);
+                        b.Draw(
+                            Game1.mouseCursors,
+                            new Rectangle(
+                                this.socialDetailDeletePostBounds.Center.X - trashW / 2,
+                                this.socialDetailDeletePostBounds.Center.Y - trashH / 2,
+                                trashW,
+                                trashH),
+                            new Rectangle(322, 498, 12, 12),
+                            Color.White);
+                    }
+                }
+            }
+            finally
+            {
+                this.phoneUiScale = oldScale;
+                this.xPositionOnScreen = oldX;
+                this.yPositionOnScreen = oldY;
+                this.width = oldWidth;
+                this.height = oldHeight;
+                this.phoneFrameWidth = oldPhoneWidth;
+                this.phoneFrameHeight = oldPhoneHeight;
+                this.phoneContentOffsetX = oldContentOffsetX;
+                this.phoneContentOffsetY = oldContentOffsetY;
+                this.contentWidth = oldContentWidth;
+                this.contentHeight = oldContentHeight;
+                this.ClearCachesAndRecalculate();
+            }
+        }
     }
 }

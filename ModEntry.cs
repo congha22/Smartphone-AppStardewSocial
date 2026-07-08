@@ -24,6 +24,7 @@ namespace SmartphoneAppStardewSocial
         private Dictionary<string, Texture2D> themedIcons = new(StringComparer.OrdinalIgnoreCase);
         private Texture2D? appBackgroundTexture;
         public static bool modReady = false;
+        private StardewSocialScreen? activeScreen;
 
         // NPC characteristic data loaded from assets
         public static Dictionary<string, string> NpcCharacteristicsLong = new();
@@ -260,6 +261,14 @@ namespace SmartphoneAppStardewSocial
                 this.Monitor.Log("Failed to register Stardew Social app.", LogLevel.Error);
                 return;
             }
+ 
+            iSmartphoneApi.RegisterPassiveHudCallback(
+                ownerModId: this.ModManifest.UniqueID,
+                appId: AppId,
+                onDrawHudScreen: (b, rect) => this.activeScreen?.DrawScreenContent(b, rect),
+                onUpdateHudScreen: (time) => this.activeScreen?.update(time),
+                landscape: false
+            );
 
             // Register Contact Action Card for Stardew Social
             List<IContactActionCardButton> buttons = new List<IContactActionCardButton>
@@ -272,11 +281,12 @@ namespace SmartphoneAppStardewSocial
                     OnClick = (npcName) =>
                     {
                         if (iSmartphoneApi == null) return;
-                        Game1.activeClickableMenu = new StardewSocialScreen(
+                        this.activeScreen = new StardewSocialScreen(
                             iSmartphoneApi,
                             npcName,
                             () => iSmartphoneApi.OpenPhoneHomeScreen()
                         );
+                        Game1.activeClickableMenu = this.activeScreen;
                     }
                 }
             };
@@ -289,10 +299,11 @@ namespace SmartphoneAppStardewSocial
         {
             if (!Context.IsWorldReady || iSmartphoneApi == null)
                 return;
-
-            Game1.activeClickableMenu = new StardewSocialScreen(
+ 
+            this.activeScreen = new StardewSocialScreen(
                 iSmartphoneApi,
                 () => iSmartphoneApi.OpenPhoneHomeScreen());
+            Game1.activeClickableMenu = this.activeScreen;
         }
 
         /// <summary>Exposes the API for other mods to interact with the Stardew Social app.</summary>
