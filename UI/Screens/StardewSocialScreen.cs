@@ -244,7 +244,8 @@ namespace SmartphoneAppStardewSocial
             this.contentWidth = Math.Max(1, this.phoneFrameWidth - (this.phoneContentOffsetX * 2));
             this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleUiValue(135));
 
-            this.Selected = false;
+            this.Selected = true;
+            Game1.keyboardDispatcher.Subscriber = this;
 
             this.commentTextBox.Clear();
             this.postTextBox.Clear();
@@ -1554,11 +1555,13 @@ namespace SmartphoneAppStardewSocial
 
             Rectangle contentRect = GetContentBounds();
             Rectangle clipRect = SocialContentViewportRect;
-            bool clickedInput = false;
 
             // Set text box click cursor
             if (contentRect.Contains(x, y))
             {
+                this.Selected = true;
+                Game1.keyboardDispatcher.Subscriber = this;
+
                 if (this.socialCreateMenuOpen)
                 {
                     if (this.socialTagMenuOpen)
@@ -1574,9 +1577,6 @@ namespace SmartphoneAppStardewSocial
 
                         if (searchBounds.Contains(x, y))
                         {
-                            clickedInput = true;
-                            this.Selected = true;
-                            Game1.keyboardDispatcher.Subscriber = this;
                             if (Constants.TargetPlatform == GamePlatform.Android)
                             {
                                 TriggerAndroidKeyboard(ActiveInput.TagSearch, ModEntry.SHelper.Translation.Get("keyboard.title.tagPeople"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.tagSearchTextBox.Text);
@@ -1593,9 +1593,6 @@ namespace SmartphoneAppStardewSocial
                         Rectangle inputBounds = new Rectangle(clipRect.X + ScaleUiValue(15), clipRect.Y + ScaleUiValue(15), clipRect.Width - ScaleUiValue(30), ScaleUiValue(180));
                         if (inputBounds.Contains(x, y))
                         {
-                            clickedInput = true;
-                            this.Selected = true;
-                            Game1.keyboardDispatcher.Subscriber = this;
                             if (Constants.TargetPlatform == GamePlatform.Android)
                             {
                                 TriggerAndroidKeyboard(ActiveInput.Post, ModEntry.SHelper.Translation.Get("keyboard.title.createPost"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.postTextBox.Text);
@@ -1613,9 +1610,6 @@ namespace SmartphoneAppStardewSocial
                     Rectangle commentInputBounds = new Rectangle(clipRect.X + ScaleUiValue(15), clipRect.Bottom - ScaleUiValue(75), clipRect.Width - ScaleUiValue(95), ScaleUiValue(60));
                     if (commentInputBounds.Contains(x, y))
                     {
-                        clickedInput = true;
-                        this.Selected = true;
-                        Game1.keyboardDispatcher.Subscriber = this;
                         if (Constants.TargetPlatform == GamePlatform.Android)
                         {
                             TriggerAndroidKeyboard(ActiveInput.Comment, ModEntry.SHelper.Translation.Get("keyboard.title.comment"), ModEntry.SHelper.Translation.Get("keyboard.description"), this.commentTextBox.Text);
@@ -1625,15 +1619,6 @@ namespace SmartphoneAppStardewSocial
                             this.commentTextBox.SetCursorFromClick(x, commentInputBounds, this.phoneUiScale);
                         }
                     }
-                }
-            }
-
-            if (!clickedInput)
-            {
-                this.Selected = false;
-                if (Game1.keyboardDispatcher.Subscriber == this)
-                {
-                    Game1.keyboardDispatcher.Subscriber = null;
                 }
             }
 
@@ -2357,15 +2342,6 @@ namespace SmartphoneAppStardewSocial
 
         public override void update(GameTime time)
         {
-            if (Game1.activeClickableMenu != this)
-            {
-                this.Selected = false;
-                if (Game1.keyboardDispatcher.Subscriber == this)
-                {
-                    Game1.keyboardDispatcher.Subscriber = null;
-                }
-            }
-
             // Sync from API if modified externally
             float activeScale = this.smartphoneApi.GetPhoneUiScale();
             if (Math.Abs(this.phoneUiScale - activeScale) > 0.001f)
@@ -2398,11 +2374,13 @@ namespace SmartphoneAppStardewSocial
             this.socialDetailScrollOffset = MathHelper.Lerp(this.socialDetailScrollOffset, this.socialDetailScrollTarget, Math.Min(1f, lerpFactor));
             this.tagMenuScrollOffset = MathHelper.Lerp(this.tagMenuScrollOffset, this.tagMenuScrollTarget, Math.Min(1f, lerpFactor));
 
+            bool isMenuOpened = Game1.activeClickableMenu == this;
+
             // TextBox update
             UpdateAndroidKeyboard();
-            this.postTextBox.Update(time, this.Selected && this.socialCreateMenuOpen && !this.socialTagMenuOpen);
-            this.tagSearchTextBox.Update(time, this.Selected && this.socialCreateMenuOpen && this.socialTagMenuOpen);
-            this.commentTextBox.Update(time, this.Selected && !string.IsNullOrWhiteSpace(this.selectedSocialPostId));
+            this.postTextBox.Update(time, isMenuOpened && this.Selected && this.socialCreateMenuOpen && !this.socialTagMenuOpen);
+            this.tagSearchTextBox.Update(time, isMenuOpened && this.Selected && this.socialCreateMenuOpen && this.socialTagMenuOpen);
+            this.commentTextBox.Update(time, isMenuOpened && this.Selected && !string.IsNullOrWhiteSpace(this.selectedSocialPostId));
 
             // Emoji Menu update
             if (this.emojiMenu != null)
@@ -2428,11 +2406,22 @@ namespace SmartphoneAppStardewSocial
                 }
             }
 
-            // Force keyboard dispatcher focus (unless emojiMenu is open)
-            if (Game1.keyboardDispatcher.Subscriber != this && this.emojiMenu == null)
+            if (isMenuOpened)
             {
-                Game1.keyboardDispatcher.Subscriber = this;
-                this.Selected = true;
+                // Force keyboard dispatcher focus (unless emojiMenu is open)
+                if (Game1.keyboardDispatcher.Subscriber != this && this.emojiMenu == null)
+                {
+                    Game1.keyboardDispatcher.Subscriber = this;
+                    this.Selected = true;
+                }
+            }
+            else
+            {
+                if (Game1.keyboardDispatcher.Subscriber == this)
+                {
+                    Game1.keyboardDispatcher.Subscriber = null;
+                }
+                this.Selected = false;
             }
 
             if (this.isDragging)
