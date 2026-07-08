@@ -313,5 +313,8 @@ namespace SmartphoneAppStardewSocial
             Action<GameTime>? onUpdateHudScreen = null,
             bool landscape = false
         );
+
+        bool IsHudPinned();
+        string? GetPinnedAppId();
     }
 }

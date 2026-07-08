@@ -266,7 +266,7 @@ namespace SmartphoneAppStardewSocial
                 ownerModId: this.ModManifest.UniqueID,
                 appId: AppId,
                 onDrawHudScreen: (b, rect) => this.activeScreen?.DrawScreenContent(b, rect),
-                onUpdateHudScreen: (time) => this.activeScreen?.update(time),
+                onUpdateHudScreen: (time) => { if (Game1.activeClickableMenu != this.activeScreen) this.activeScreen?.update(time); },
                 landscape: false
             );
 
@@ -300,9 +300,13 @@ namespace SmartphoneAppStardewSocial
             if (!Context.IsWorldReady || iSmartphoneApi == null)
                 return;
  
-            this.activeScreen = new StardewSocialScreen(
-                iSmartphoneApi,
-                () => iSmartphoneApi.OpenPhoneHomeScreen());
+            bool resume = iSmartphoneApi.IsHudPinned() && string.Equals(iSmartphoneApi.GetPinnedAppId(), $"{this.ModManifest.UniqueID}::{AppId}");
+            if (!resume || this.activeScreen == null)
+            {
+                this.activeScreen = new StardewSocialScreen(
+                    iSmartphoneApi,
+                    () => iSmartphoneApi.OpenPhoneHomeScreen());
+            }
             Game1.activeClickableMenu = this.activeScreen;
         }
 
