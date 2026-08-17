@@ -10,12 +10,13 @@ namespace SmartphoneAppStardewSocial
         public const string PostPerDayMedium = "Medium";
         public const string PostPerDayLow = "Low";
 
+        public const string OpenAIModel_56luna = "gpt-5.6-luna";
         public const string OpenAIModel_51 = "gpt-5.1";
         public const string OpenAIModel_5mini = "gpt-5-mini";
         public const string OpenAIModel_5nano = "gpt-5-nano";
         public const string OpenAIModel_54mini = "gpt-5.4-mini";
         public const string OpenAIModel_54nano = "gpt-5.4-nano";
-        public const string GeminiModel_35Flash = "gemini-3.5-flash";
+        public const string GeminiModel_37Flash = "gemini-3.7-flash";
         public const string GeminiModel_31FlashLite = "gemini-3.1-flash-lite";
         public const string GeminiModel_3FlashPreview = "gemini-3-flash-preview";
 
@@ -26,13 +27,14 @@ namespace SmartphoneAppStardewSocial
 
         public static readonly List<string> geminiModels = new()
         {
-            GeminiModel_35Flash,
+            GeminiModel_37Flash,
             GeminiModel_31FlashLite,
             GeminiModel_3FlashPreview
         };
 
         public static readonly List<string> openAIModels = new()
         {
+            OpenAIModel_56luna,
             OpenAIModel_51,
             OpenAIModel_5mini,
             OpenAIModel_5nano,
@@ -47,7 +49,7 @@ namespace SmartphoneAppStardewSocial
         public string FriendshipRequirement { get; set; } = "Meet";
 
         public string Key { get; set; } = string.Empty;
-        public string Model { get; set; } = OpenAIModel_54mini;
+        public string Model { get; set; } = OpenAIModel_56luna;
         public string CharacteristicMode { get; set; } = CharacteristicModeShort;
         public bool BetterQualityComment { get; set; } = false;
         public string NpcProfileTheme { get; set; } = "vanilla";
